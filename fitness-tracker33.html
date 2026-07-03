@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Fitness Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────────────────── */
+:root {
+  --accent:      #3b6ef5;
+  --accent-soft: #eff3ff;
+  --accent-mid:  #c7d4fd;
+  --bg:          #f2f4f8;
+  --card:        #ffffff;
+  --ink:         #111318;
+  --ink-2:       #374151;
+  --muted:       #6b7280;
+  --hair:        #e5e7eb;
+  --green:       #16a34a;
+  --red:         #dc2626;
+  --font:        'Inter', sans-serif;
+  --r-card:      18px;
+  --r-sm:        12px;
+  --r-pill:      999px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 80px;
+  overscroll-behavior-y: none;
+}
+
+/* LOADING */
+#loadingScreen {
+  position: fixed; inset: 0; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; transition: opacity .3s;
+}
+#loadingScreen.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--hair); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* HEADER */
+.header {
+  background: var(--header-bg, #fff);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 60px 20px 14px;
+  position: sticky; top: 0; z-index: 10;
+  border-bottom: 1px solid var(--hair);
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+.back-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1.5px solid var(--hair); background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink); -webkit-tap-highlight-color: transparent;
+}
+
+/* SCROLL */
+.scroll { padding: 28px 16px 0; }
+
+/* GREETING */
+.greeting { padding: 0 0 28px; }
+.greeting-sub {
+  font-size: 16px; font-weight: 500; color: var(--muted);
+  margin-bottom: 4px; line-height: 1.4;
+}
+.greeting-name {
+  font-size: 32px; font-weight: 800; color: var(--ink);
+  letter-spacing: -.7px; line-height: 1.15;
+}
+
+.greeting-motiv {
+  font-size: 15px; font-weight: 500; color: var(--muted);
+  margin-top: 8px; line-height: 1.5;
+}
+
+/* SECTION LABEL */
+.section-label {
+  font-size: 12px; font-weight: 700; color: var(--ink-2);
+  letter-spacing: .6px; text-transform: uppercase;
+  margin-bottom: 12px; padding: 0 2px;
+}
+
+/* CARD */
+.card {
+  background: var(--card); border-radius: var(--r-card);
+  border: 1px solid var(--hair);
+  padding: 20px; margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 12px; font-weight: 700; color: var(--ink);
+  letter-spacing: .5px; text-transform: uppercase;
+}
+
+/* HERO + DONUT */
+.steps-hero-row {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 16px;
+  padding: 0 0 24px;
+}
+.steps-hero-text { flex: 1; min-width: 0; }
+.steps-today-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .6px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+.steps-hero-main {
+  font-size: 44px; font-weight: 900; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1; letter-spacing: -1.5px;
+}
+.steps-hero-goal {
+  font-size: 22px; font-weight: 600; color: var(--muted);
+  letter-spacing: -.3px;
+}
+.steps-hero-meta {
+  font-size: 14px; font-weight: 500; color: var(--muted);
+  margin-top: 12px; line-height: 1.6;
+}
+.steps-hero-meta strong { color: var(--ink-2); font-weight: 700; }
+.set-goal-btn {
+  margin-top: 18px;
+  display: inline-flex; align-items: center;
+  background: var(--accent-soft); color: var(--accent);
+  font-family: var(--font); font-size: 14px; font-weight: 700;
+  border: none; border-radius: var(--r-pill);
+  padding: 10px 20px; letter-spacing: .1px;
+  -webkit-tap-highlight-color: transparent;
+}
+.set-goal-btn:active { opacity: .75; }
+.donut-wrap {
+  position: relative; width: 140px; height: 140px; flex-shrink: 0;
+}
+.donut-wrap svg { transform: rotate(-90deg); }
+.donut-pct {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800; color: var(--ink);
+}
+
+/* BAR CHART */
+.chart-outer { position: relative; height: 148px; margin-bottom: 10px; }
+.chart-bars {
+  position: absolute; left: 0; right: 0; bottom: 40px; top: 0;
+  display: flex; align-items: flex-end; gap: 4px;
+}
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.bar {
+  width: 100%; max-width: 32px; border-radius: 6px 6px 3px 3px;
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform .5s cubic-bezier(.34,1.2,.64,1);
+}
+.bar.accent { background: var(--accent); }
+.bar.dim    { background: var(--accent-mid); opacity: .5; }
+.chart-xlabels { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 4px; }
+.bar-xlabel { flex: 1; text-align: center; }
+.bar-xlabel .day { font-size: 12px; font-weight: 600; color: var(--ink-2); display: block; }
+.bar-xlabel .val { font-size: 10px; font-weight: 500; color: var(--muted); display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* STATS ROW */
+.stats-row {
+  display: flex; background: #f9fafb;
+  border-radius: var(--r-sm); border: 1px solid var(--hair);
+  overflow: hidden; margin-bottom: 20px;
+}
+.stat-box {
+  flex: 1; padding: 16px 8px; text-align: center;
+  border-right: 1px solid var(--hair);
+}
+.stat-box:last-child { border-right: none; }
+.stat-val { font-size: 18px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+.stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
+
+/* CAL SPLIT */
+.cal-split { display: flex; gap: 12px; }
+.cal-split-item {
+  flex: 1; padding: 16px; background: #f9fafb;
+  border-radius: var(--r-sm); border: 1px solid var(--hair);
+}
+.cal-split-label { font-size: 11px; font-weight: 700; color: var(--ink-2); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; }
+.cal-split-val { font-size: 24px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.6px; }
+.cal-split-unit { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+
+/* WORKOUTS */
+.workouts-header { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 14px; }
+.workouts-title { font-size: 16px; font-weight: 700; color: var(--ink); }
+.workouts-count { font-size: 14px; font-weight: 500; color: var(--muted); }
+.workout-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--hair); }
+.workout-icon { width: 48px; height: 48px; border-radius: var(--r-sm); background: var(--accent-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 24px; }
+.workout-name { font-size: 16px; font-weight: 600; color: var(--ink); }
+.workout-time-meta { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.workout-dur { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* EMPTY STATE */
+#emptyState { display: none; flex-direction: column; align-items: center; padding: 72px 28px; text-align: center; }
+.empty-icon { width: 76px; height: 76px; border-radius: 24px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+.empty-title { font-size: 22px; font-weight: 800; color: var(--ink); margin-bottom: 10px; letter-spacing: -.4px; }
+.empty-sub { font-size: 15px; color: var(--muted); line-height: 1.6; max-width: 270px; margin-bottom: 32px; }
+.empty-steps { width: 100%; max-width: 290px; text-align: left; }
+.empty-step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 20px; }
+.empty-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.empty-step-text { font-size: 14px; font-weight: 500; color: var(--ink-2); line-height: 1.55; }
+
+/* SHEET */
+.scrim { position: fixed; inset: 0; background: rgba(17,19,24,.3); backdrop-filter: blur(4px); z-index: 20; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.scrim.open { opacity: 1; pointer-events: all; }
+.sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 24px 24px 0 0; padding: 14px 24px 48px; z-index: 21; transform: translateY(110%); transition: transform .32s cubic-bezier(.2,.8,.2,1); box-shadow: 0 -4px 32px rgba(0,0,0,.12); }
+.sheet.open { transform: translateY(0); }
+.grabber { width: 40px; height: 4px; background: var(--hair); border-radius: var(--r-pill); margin: 0 auto 22px; }
+.sheet-title-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
+.sheet-label { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+.sheet-subtitle { font-size: 18px; font-weight: 700; color: var(--ink); margin-top: 4px; letter-spacing: -.3px; }
+.close-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--bg); border: 1px solid var(--hair); display: flex; align-items: center; justify-content: center; color: var(--ink-2); -webkit-tap-highlight-color: transparent; }
+.close-btn:active { opacity: .7; }
+.draft-val { font-size: 56px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; text-align: center; line-height: 1; margin: 22px 0; letter-spacing: -2px; }
+.draft-unit { font-size: 18px; font-weight: 500; color: var(--muted); }
+.slider-wrap { margin: 10px 0 6px; }
+input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: var(--r-pill); outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2.5px solid var(--accent); box-shadow: 0 2px 8px rgba(59,110,245,.3); }
+.slider-minmax { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+.chip { padding: 12px 20px; border-radius: var(--r-pill); border: 1.5px solid var(--hair); background: var(--bg); font-family: var(--font); font-size: 15px; font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; -webkit-tap-highlight-color: transparent; }
+.chip:active { opacity: .7; }
+.chip.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.primary-btn { width: 100%; padding: 18px; border-radius: 16px; border: none; background: var(--accent); color: #fff; font-family: var(--font); font-size: 17px; font-weight: 700; letter-spacing: -.1px; margin-top: 8px; box-shadow: 0 4px 20px rgba(59,110,245,.35); -webkit-tap-highlight-color: transparent; }
+.primary-btn:active { opacity: .85; }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen"><div class="spinner"></div></div>
+
+<div class="header">
+  <div></div>
+  <button class="back-btn" id="backBtn">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 12L6 8l4-4"/></svg>
+  </button>
+</div>
+
+<div class="scroll">
+  <div class="greeting">
+    <div class="greeting-sub" id="greetMsg">Good morning,</div>
+    <div class="greeting-name" id="greetName">—</div>
+    <div class="greeting-motiv" id="greetMotiv"></div>
+  </div>
+
+  <div id="emptyState">
+    <div class="empty-title">No data available</div>
+    <div class="empty-sub">Check your health permissions and try again.</div>
+  </div>
+
+  <!-- STEPS -->
+  <div id="stepsSection" style="display:none">
+    <div class="section-label">Steps</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Steps Activity</span></div>
+      <div class="steps-hero-row">
+        <div class="steps-hero-text">
+          <div class="steps-today-label">Today's Steps</div>
+          <div class="steps-hero-main" id="donutSteps">— <span class="steps-hero-goal">/ —</span></div>
+          <div class="steps-hero-meta" id="donutMeta">— steps to goal</div>
+          <button class="set-goal-btn" id="setGoalBtn">Set Goal</button>
+        </div>
+        <div class="donut-wrap">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="58" fill="none" stroke="var(--hair)" stroke-width="11"/>
+            <circle id="donutFill" cx="70" cy="70" r="58" fill="none" stroke="var(--accent)" stroke-width="11"
+              stroke-dasharray="364" stroke-dashoffset="364" stroke-linecap="round"
+              style="transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)"/>
+          </svg>
+          <div class="donut-pct" id="donutPct">0%</div>
+        </div>
+      </div>
+      <div class="chart-outer">
+        <div class="chart-bars" id="chartBars"></div>
+        <div class="chart-xlabels" id="chartXLabels"></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val" id="statAvg">—</div><div class="stat-lbl">Weekly Avg</div></div>
+        <div class="stat-box"><div class="stat-val" id="statBest">—</div><div class="stat-lbl">Best Day</div></div>
+        <div class="stat-box"><div class="stat-val" id="statTotal">—</div><div class="stat-lbl">Weekly Total</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FITNESS -->
+  <div id="fitnessSection" style="display:none">
+    <div class="section-label">Fitness</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Calories Burn</span></div>
+      <div class="steps-hero-row">
+        <div class="steps-hero-text">
+          <div class="steps-today-label">Burned Today</div>
+          <div class="steps-hero-main" id="calBig">— <span class="steps-hero-goal">/ — kcal</span></div>
+          <div class="steps-hero-meta" id="calMeta">— kcal to target</div>
+          <button class="set-goal-btn" id="setTargetBtn">Set Target</button>
+        </div>
+        <div class="donut-wrap">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="58" fill="none" stroke="var(--hair)" stroke-width="11"/>
+            <circle id="calDonutFill" cx="70" cy="70" r="58" fill="none" stroke="var(--accent)" stroke-width="11"
+              stroke-dasharray="364" stroke-dashoffset="364" stroke-linecap="round"
+              style="transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)"/>
+          </svg>
+          <div class="donut-pct" id="calDonutPct">0%</div>
+        </div>
+      </div>
+      <div class="cal-split" style="margin-top:4px">
+        <div class="cal-split-item">
+          <div class="cal-split-label">Active</div>
+          <div><span class="cal-split-val" id="calActive">—</span><span class="cal-split-unit">kcal</span></div>
+        </div>
+        <div class="cal-split-item">
+          <div class="cal-split-label">Basal</div>
+          <div><span class="cal-split-val" id="calBasal">—</span><span class="cal-split-unit">kcal</span></div>
+        </div>
+      </div>
+      <div class="workouts-header">
+        <span class="workouts-title">Workouts</span>
+        <span class="workouts-count" id="workoutsCount">—</span>
+      </div>
+      <div id="workoutRows"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="goalSheet">
+  <div class="grabber"></div>
+  <div class="sheet-title-row">
+    <div>
+      <div class="sheet-label" id="sheetLabel">Daily Target</div>
+      <div class="sheet-subtitle" id="sheetSubtitle">Steps per day</div>
+    </div>
+    <button class="close-btn" id="closeSheet">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>
+    </button>
+  </div>
+  <div class="draft-val"><span id="draftVal">8,000</span> <span class="draft-unit" id="draftUnit">steps</span></div>
+  <div class="slider-wrap">
+    <input type="range" id="goalSlider" min="1000" max="25000" step="500" value="8000"/>
+    <div class="slider-minmax"><span id="sliderMin">1,000</span><span id="sliderMax">25,000</span></div>
+  </div>
+  <div class="chips" id="chipsRow"></div>
+  <button class="primary-btn" id="commitBtn">Set Goal</button>
+</div>
+
+<script>
+// ─── Bridge ───────────────────────────────────────────────────────────────────
+const isNative = typeof window.ReactNativeWebView !== 'undefined'
+function postToApp(key, data) {
+  const msg = JSON.stringify({ key, data: data || null })
+  if (isNative) window.ReactNativeWebView.postMessage(msg)
+  else window.parent.postMessage(msg, '*')
+}
+let _reqId = 0
+const _pending = {}
+function restRequest(method, model, data, specialParams) {
+  return new Promise((resolve, reject) => {
+    const id = 'r' + (++_reqId)
+    const t = setTimeout(() => {
+      if (_pending[id]) { delete _pending[id]; reject(new Error('timeout:' + model)) }
+    }, 10000)
+    _pending[id] = {
+      resolve: v => { clearTimeout(t); resolve(v) },
+      reject:  e => { clearTimeout(t); reject(e) }
+    }
+    const msg = JSON.stringify({ key:'REST_REQUEST', method, model, data, id, specialParams: specialParams||null })
+    if (isNative) window.ReactNativeWebView.postMessage(msg)
+    else window.parent.postMessage(msg, '*')
+  })
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {}
+const hd = {
+  STEP_DAY_MAP: null, TODAY_STEPS: null, YESTERDAY_STEPS: null,
+  CALORIES: null, WORKOUTS: null,
+}
+let stepGoal   = 8000
+let calTarget  = 2500
+let barsAnimated = false
+let sheetMode  = 'goal'
+let draft      = 8000
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function localDateKey(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0')
+}
+const fmtN = n => n != null ? Math.round(n).toLocaleString() : '—'
+function chipLabel(v) {
+  return v % 1000 === 0 ? (v/1000)+'k' : (v/1000).toFixed(1)+'k'
+}
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+async function applyTheme() {
+  try {
+    const appId = state.ACTIVITY_RESPONSE?.app
+    const [appRes, settingsRes] = await Promise.all([
+      appId ? restRequest('get','App',appId) : Promise.resolve(null),
+      restRequest('list','Settings',{})
+    ])
+    const aT = appRes?.theme || {}
+    const pT = settingsRes?.items?.[0]?.theme || {}
+    const colors = Object.assign({}, pT.colors, aT.colors)
+    const root = document.documentElement
+    if (colors.primary) {
+      root.style.setProperty('--accent',      colors.primary)
+      root.style.setProperty('--accent-soft', `color-mix(in srgb, ${colors.primary} 10%, white)`)
+      root.style.setProperty('--accent-mid',  `color-mix(in srgb, ${colors.primary} 30%, white)`)
+    }
+    if (colors.light) root.style.setProperty('--bg', colors.light)
+    else if (colors.primary) root.style.setProperty('--bg', `color-mix(in srgb, ${colors.primary} 6%, white)`)
+    const hc = (aT.activityHeader || pT.activityHeader)?.color
+    if (hc) root.style.setProperty('--header-bg', hc)
+  } catch(e) {}
+}
+
+// ─── Chart ────────────────────────────────────────────────────────────────────
+function getWeekSlice() {
+  const today = new Date(); today.setHours(0,0,0,0)
+  return Array.from({length:7}, (_,i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (6 - i))
+    const ds = localDateKey(d)
+    const day = d.toLocaleDateString('en-US', {weekday:'short'})
+    const steps = (hd.STEP_DAY_MAP && hd.STEP_DAY_MAP[ds]) || 0
+    return { ds, day, steps }
+  })
+}
+function renderChart(week) {
+  const barsEl = document.getElementById('chartBars')
+  const xlblEl = document.getElementById('chartXLabels')
+  barsEl.innerHTML = ''; xlblEl.innerHTML = ''
+  const maxV = Math.max(...week.map(d => d.steps), stepGoal, 1)
+  week.forEach((day, i) => {
+    const col = document.createElement('div'); col.className = 'bar-col'
+    const wrap = document.createElement('div'); wrap.className = 'bar-wrap'
+    const bar = document.createElement('div')
+    bar.className = 'bar ' + (day.steps >= stepGoal ? 'accent' : 'dim')
+    bar.style.height = Math.max((day.steps / maxV) * 100, 1) + '%'
+    wrap.appendChild(bar); col.appendChild(wrap); barsEl.appendChild(col)
+    const lbl = document.createElement('div'); lbl.className = 'bar-xlabel'
+    lbl.innerHTML = `<span class="day">${day.day}</span><span class="val">${fmtN(day.steps)}</span>`
+    xlblEl.appendChild(lbl)
+    if (!barsAnimated) setTimeout(() => { bar.style.transform = 'scaleY(1)' }, 80 + i*50)
+    else { bar.style.transition = 'none'; bar.style.transform = 'scaleY(1)' }
+  })
+  barsAnimated = true
+}
+
+// ─── Donut ────────────────────────────────────────────────────────────────────
+function animateDonut(fillId, pctId, value, total) {
+  const pct = Math.min(1, value / total)
+  const circ = 2 * Math.PI * 58
+  document.getElementById(fillId).setAttribute('stroke-dasharray', circ)
+  document.getElementById(fillId).style.strokeDashoffset = circ * (1 - pct)
+  document.getElementById(pctId).textContent = Math.round(pct * 100) + '%'
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+const MOTIV_NONE = [
+  "Keep moving, you are getting closer to today's goals.",
+  "Every step and every calorie counts.",
+  "Stay active, you have got this!",
+  "Small progress today leads to big results tomorrow.",
+  "Keep the momentum going.",
+  "One walk closer to your goals.",
+  "You are building healthy habits one step at a time.",
+  "Keep pushing, your goals are within reach.",
+  "Progress, not perfection.",
+  "Let us finish today strong!"
+]
+const MOTIV_STEPS_ONLY = [
+  "Step target complete! Keep moving to hit your calorie goal."
+]
+const MOTIV_CALS_ONLY = [
+  "Calorie goal achieved! Time to complete your step goal."
+]
+const MOTIV_BOTH = [
+  "Incredible! You have gone beyond both of today's goals.",
+  "Outstanding effort! You are exceeding expectations.",
+  "You are on fire today!",
+  "Both goals surpassed, keep up the amazing work!",
+  "What a performance! Every extra step counts."
+]
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+function updateMotiv() {
+  const today     = hd.TODAY_STEPS ?? 0
+  const totalCals = hd.CALORIES ? (hd.CALORIES.active||0) + (hd.CALORIES.basal||0) : 0
+  const stepsHit  = hd.STEP_DAY_MAP !== null && today >= stepGoal
+  const calsHit   = hd.CALORIES !== null && totalCals >= calTarget
+  let msg = ''
+  if (stepsHit && calsHit)       msg = pick(MOTIV_BOTH)
+  else if (stepsHit && !calsHit) msg = pick(MOTIV_STEPS_ONLY)
+  else if (!stepsHit && calsHit) msg = pick(MOTIV_CALS_ONLY)
+  else if (hd.STEP_DAY_MAP !== null || hd.CALORIES !== null) msg = pick(MOTIV_NONE)
+  document.getElementById('greetMotiv').textContent = msg
+}
+
+function renderAll() {
+  const hasSteps = hd.STEP_DAY_MAP !== null
+  const hasCals  = hd.CALORIES !== null
+  const hasAny   = hasSteps || hasCals
+  document.getElementById('emptyState').style.display    = hasAny ? 'none' : 'flex'
+  document.getElementById('stepsSection').style.display  = hasSteps ? '' : 'none'
+  document.getElementById('fitnessSection').style.display = hasCals ? '' : 'none'
+  updateMotiv()
+
+  if (hasSteps) {
+    const week = getWeekSlice()
+    const vals = week.map(d => d.steps)
+    const today = hd.TODAY_STEPS ?? 0
+    const yest  = hd.YESTERDAY_STEPS ?? 0
+    document.getElementById('statAvg').textContent   = fmtN(vals.reduce((a,b)=>a+b,0)/7)
+    document.getElementById('statBest').textContent  = fmtN(Math.max(...vals))
+    document.getElementById('statTotal').textContent = fmtN(vals.reduce((a,b)=>a+b,0))
+    renderChart(week)
+    document.getElementById('donutSteps').innerHTML =
+      `${fmtN(today)} <span class="steps-hero-goal">/ ${fmtN(stepGoal)}</span>`
+    const remaining = Math.max(0, stepGoal - today)
+    const diff = today - yest
+    const diffPct = yest > 0 ? Math.round(Math.abs(diff)/yest*100) : 0
+    const diffStr = diff >= 0 ? `↑ ${diffPct}% up` : `↓ ${diffPct}% down`
+    document.getElementById('donutMeta').innerHTML =
+      `${fmtN(remaining)} steps to goal<br><strong>Yesterday: ${fmtN(yest)} &nbsp;${diffStr}</strong>`
+    animateDonut('donutFill', 'donutPct', today, stepGoal)
+  }
+
+  if (hasCals) {
+    const c = hd.CALORIES
+    const total = (c.active||0) + (c.basal||0)
+    document.getElementById('calBig').innerHTML =
+      `${fmtN(total)} <span class="steps-hero-goal">/ ${fmtN(calTarget)} kcal</span>`
+    document.getElementById('calActive').textContent = fmtN(c.active)
+    document.getElementById('calBasal').textContent  = fmtN(c.basal)
+    const remaining = Math.max(0, calTarget - total)
+    document.getElementById('calMeta').textContent = fmtN(remaining) + ' kcal to target'
+    animateDonut('calDonutFill', 'calDonutPct', total, calTarget)
+    renderWorkouts()
+  }
+}
+
+function renderWorkouts() {
+  const list = hd.WORKOUTS || []
+  document.getElementById('workoutsCount').textContent =
+    list.length ? 'This week — ' + list.length + ' Session' + (list.length!==1?'s':'') : 'No sessions this week'
+  const container = document.getElementById('workoutRows')
+  container.innerHTML = ''
+  const EMOJI = { Run:'🏃', Running:'🏃', Strength:'💪', Yoga:'🧘', Cycling:'🚴', Swimming:'🏊', Walk:'🚶', Workout:'🏋️' }
+  list.forEach(w => {
+    const row = document.createElement('div'); row.className = 'workout-row'
+    const kcalStr = w.kcal != null ? fmtN(w.kcal) + ' kcal' : '—'
+    row.innerHTML = `
+      <div class="workout-icon">${EMOJI[w.type]||'🏋️'}</div>
+      <div style="flex:1">
+        <div class="workout-name">${w.type}</div>
+        <div class="workout-time-meta">${w.time}</div>
+      </div>
+      <div class="workout-dur">${kcalStr}</div>`
+    container.appendChild(row)
+  })
+}
+
+// ─── Prefs ────────────────────────────────────────────────────────────────────
+function savePrefs() {
+  const text = JSON.stringify({ stepGoal, calTarget })
+  postToApp('QUESTION_RESPONSE', { index: 0, text })
+  postToApp('LOG', { message: '[FT] prefs saved: ' + text })
+}
+
+async function loadPrefs() {
+  if (state.CONFIG?.step_goal)  stepGoal  = parseInt(state.CONFIG.step_goal)  || 8000
+  if (state.CONFIG?.cal_target) calTarget = parseInt(state.CONFIG.cal_target) || 2500
+  if (!state.USER?.id) return
+  const questions = Array.isArray(state.QUESTIONS) ? state.QUESTIONS : []
+  const q = questions.find(function(q) { return q.label === 'fitness_prefs' }) || questions[0]
+  const questionId = (q && (q._id || q.id)) || null
+  postToApp('LOG', { message: '[FT] question id: ' + questionId })
+  try {
+    var raw = null
+    if (questionId) {
+      var res1 = await restRequest('list', 'QuestionResponse', { question: questionId, user: state.USER.id, sort: '-date', limit: 1 })
+      var item = res1 && res1.items && res1.items[0]
+      raw = (item && (item.text || item.value || item.answer)) || null
+      postToApp('LOG', { message: '[FT] by questionId: ' + raw })
+    }
+    if (!raw && state.ACTIVITY && state.ACTIVITY.id) {
+      var res2 = await restRequest('list', 'QuestionResponse', { activity: state.ACTIVITY.id, user: state.USER.id, sort: '-date', limit: 20 })
+      var items = (res2 && res2.items) || []
+      var match = null
+      for (var i = 0; i < items.length; i++) {
+        var candidate = items[i].text || items[i].value || ''
+        try { var b = JSON.parse(candidate); if (b && (b.stepGoal || b.calTarget)) { match = candidate; break } } catch(e) {}
+      }
+      raw = match
+      postToApp('LOG', { message: '[FT] fallback: ' + raw })
+    }
+    if (raw) {
+      var prefs = JSON.parse(raw)
+      if (prefs && prefs.stepGoal)  stepGoal  = prefs.stepGoal
+      if (prefs && prefs.calTarget) calTarget = prefs.calTarget
+      postToApp('LOG', { message: '[FT] prefs loaded: stepGoal=' + stepGoal + ' calTarget=' + calTarget })
+    }
+  } catch(e) { postToApp('LOG', { message: '[FT] prefs error: ' + e.message }) }
+}
+
+// ─── Goal sheet ───────────────────────────────────────────────────────────────
+const STEP_CHIPS   = [5000,8000,10000,12000]
+const TARGET_CHIPS = [2000,2500,3000,3500]
+
+function openSheet(mode) {
+  sheetMode = mode
+  draft = mode === 'goal' ? stepGoal : calTarget
+  if (mode === 'goal') {
+    document.getElementById('sheetLabel').textContent    = 'Daily Target'
+    document.getElementById('sheetSubtitle').textContent = 'Steps per day'
+    document.getElementById('draftUnit').textContent     = 'steps'
+    document.getElementById('commitBtn').textContent     = 'Set Goal'
+    document.getElementById('goalSlider').min = 1000; document.getElementById('goalSlider').max = 25000; document.getElementById('goalSlider').step = 500
+    document.getElementById('sliderMin').textContent = '1,000'; document.getElementById('sliderMax').textContent = '25,000'
+    buildChips(STEP_CHIPS)
+  } else {
+    document.getElementById('sheetLabel').textContent    = 'Calorie Target'
+    document.getElementById('sheetSubtitle').textContent = 'kcal per day'
+    document.getElementById('draftUnit').textContent     = 'kcal'
+    document.getElementById('commitBtn').textContent     = 'Set Target'
+    document.getElementById('goalSlider').min = 500; document.getElementById('goalSlider').max = 5000; document.getElementById('goalSlider').step = 100
+    document.getElementById('sliderMin').textContent = '500'; document.getElementById('sliderMax').textContent = '5,000'
+    buildChips(TARGET_CHIPS)
+  }
+  document.getElementById('goalSlider').value = draft
+  document.getElementById('draftVal').textContent = fmtN(draft)
+  updateSlider()
+  document.getElementById('scrim').classList.add('open')
+  document.getElementById('goalSheet').classList.add('open')
+}
+function closeSheet() {
+  document.getElementById('scrim').classList.remove('open')
+  document.getElementById('goalSheet').classList.remove('open')
+}
+async function commitSheet() {
+  if (sheetMode === 'goal') { stepGoal = draft; barsAnimated = false }
+  else calTarget = draft
+  closeSheet(); renderAll(); savePrefs()
+}
+function buildChips(vals) {
+  const row = document.getElementById('chipsRow'); row.innerHTML = ''
+  vals.forEach(v => {
+    const c = document.createElement('button')
+    c.className = 'chip' + (v===draft?' active':'')
+    c.textContent = chipLabel(v)
+    c.addEventListener('click', () => { updateDraft(v); buildChips(vals) })
+    row.appendChild(c)
+  })
+}
+function updateDraft(v) {
+  draft = v
+  document.getElementById('draftVal').textContent = fmtN(v)
+  document.getElementById('goalSlider').value = v
+  updateSlider()
+}
+function updateSlider() {
+  const sl = document.getElementById('goalSlider')
+  const pct = ((draft - Number(sl.min)) / (Number(sl.max) - Number(sl.min))) * 100
+  sl.style.background = `linear-gradient(to right,var(--accent) ${pct}%,var(--hair) ${pct}%)`
+}
+
+document.getElementById('setGoalBtn').addEventListener('click', () => openSheet('goal'))
+document.getElementById('setTargetBtn').addEventListener('click', () => openSheet('target'))
+document.getElementById('closeSheet').addEventListener('click', closeSheet)
+document.getElementById('scrim').addEventListener('click', closeSheet)
+document.getElementById('commitBtn').addEventListener('click', commitSheet)
+document.getElementById('goalSlider').addEventListener('input', e => {
+  updateDraft(Number(e.target.value))
+  buildChips(sheetMode==='goal' ? STEP_CHIPS : TARGET_CHIPS)
+})
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeSheet() })
+document.getElementById('backBtn').addEventListener('click', () => postToApp('QUIT', { completeState:'COMPLETE' }))
+
+// ─── Health data ──────────────────────────────────────────────────────────────
+async function loadHealthData() {
+  if (!state.USER) return
+  const now = new Date()
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0)
+  const yestStart  = new Date(todayStart); yestStart.setDate(yestStart.getDate()-1)
+
+  try {
+    const res = await restRequest('list','AppleHealthRecord',{ user:state.USER.id, type:'STEP_COUNT', sort:'-start', limit:150 })
+    if (res?.items?.length) {
+      const map = {}
+      res.items.forEach(r => { const k = localDateKey(new Date(r.start)); map[k] = (map[k]||0) + (r.value||0) })
+      Object.keys(map).forEach(k => { map[k] = Math.round(map[k]) })
+      hd.STEP_DAY_MAP = map
+      hd.TODAY_STEPS     = Math.round(res.items.filter(r=>new Date(r.start)>=todayStart).reduce((s,r)=>s+(r.value||0),0))
+      hd.YESTERDAY_STEPS = Math.round(res.items.filter(r=>new Date(r.start)>=yestStart&&new Date(r.start)<todayStart).reduce((s,r)=>s+(r.value||0),0))
+      postToApp('LOG', { message: '[FT] steps ok: ' + res.items.length })
+    }
+  } catch(e) { postToApp('LOG', { message: '[FT] steps error: ' + e.message }) }
+
+  try {
+    const [aRes, bRes] = await Promise.all([
+      restRequest('list','AppleHealthRecord',{ user:state.USER.id, type:'ACTIVE_ENERGY_BURNED', sort:'-start', limit:50 }),
+      restRequest('list','AppleHealthRecord',{ user:state.USER.id, type:'BASAL_ENERGY_BURNED', sort:'-start', limit:50 })
+    ])
+    const active = aRes?.items?.length ? Math.round(aRes.items.filter(r=>new Date(r.start)>=todayStart).reduce((s,r)=>s+(r.value||0),0)) : null
+    const basal  = bRes?.items?.length ? Math.round(bRes.items.filter(r=>new Date(r.start)>=todayStart).reduce((s,r)=>s+(r.value||0),0)) : null
+    if (active!==null||basal!==null) hd.CALORIES = { active:active??0, basal:basal??0 }
+  } catch(e) { postToApp('LOG', { message: '[FT] calories error: ' + e.message }) }
+
+  try {
+    const res = await restRequest('list','AppleHealthRecord',{ user:state.USER.id, type:'WORKOUT', sort:'-start', limit:10 })
+    if (res?.items?.length) {
+      const fmt = d => {
+        const diff = Math.floor((now-new Date(d))/86400000)
+        if (diff===0) return 'Today · '+new Date(d).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+        if (diff===1) return 'Yesterday'
+        return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      }
+      hd.WORKOUTS = res.items.slice(0,5).map(w => ({
+        type: w.activityName||'Workout',
+        kcal: w.calories!=null ? Math.round(w.calories) : null,
+        time: fmt(w.start)
+      }))
+    } else hd.WORKOUTS = []
+  } catch(e) { postToApp('LOG', { message: '[FT] workouts error: ' + e.message }) }
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+const REQUIRED = new Set(['USER'])
+const received  = new Set()
+
+function handleMessage(msg) {
+  if (msg.key==='REQUEST_RESPONSE') {
+    const p = _pending[msg.id]
+    if (p) { delete _pending[msg.id]; msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.data) }
+    return
+  }
+  if (REQUIRED.has(msg.key)) { state[msg.key]=msg.data; received.add(msg.key) }
+  else { state[msg.key] = msg.data }
+
+  if (msg.key==='ACTIVITY_RESPONSE' && window._initStarted) applyTheme()
+  if (msg.key==='QUESTIONS' && window._initStarted) loadPrefs().then(() => renderAll())
+
+  if (received.size===REQUIRED.size && !window._initStarted) {
+    window._initStarted = true; init()
+  }
+}
+
+async function init() {
+  const h = new Date().getHours()
+  const greetWord = h<12?'Good morning':h<17?'Good afternoon':h<21?'Good evening':'Good night'
+  document.getElementById('greetMsg').textContent = '👋 ' + greetWord + ','
+  const name = state.USER?.firstName || state.USER?.displayName || state.USER?.name || ''
+  document.getElementById('greetName').textContent = name || 'there'
+
+  await Promise.all([applyTheme(), loadPrefs()])
+  await loadHealthData()
+  renderAll()
+
+  const ls = document.getElementById('loadingScreen')
+  ls.classList.add('hidden')
+  setTimeout(() => ls.style.display='none', 320)
+}
+
+function onMessage(event) {
+  try {
+    const msg = typeof event.data==='string' ? JSON.parse(event.data) : event.data
+    if (!msg || !msg.key) return
+    handleMessage(msg)
+  } catch(e) {}
+}
+document.addEventListener('message', onMessage)
+window.addEventListener('message', onMessage)
+postToApp('READY_DYNAMIC_MEDIA')
+
+if (!isNative && window.parent===window) {
+  setTimeout(() => {
+    if (!window._initStarted) {
+      window._initStarted = true
+      const h = new Date().getHours()
+      const fw = h<12?'Good morning':h<17?'Good afternoon':h<21?'Good evening':'Good night'
+      document.getElementById('greetMsg').textContent = '👋 ' + fw + ','
+      document.getElementById('greetName').textContent = 'Display Name'
+      document.getElementById('loadingScreen').classList.add('hidden')
+      setTimeout(() => document.getElementById('loadingScreen').style.display='none', 320)
+      document.getElementById('emptyState').style.display = 'flex'
+    }
+  }, 800)
+}
+</script>
+<div style="text-align:center;padding:24px 0 8px;font-size:10px;font-weight:500;color:#c0c4ce;letter-spacing:.3px;">v1.0.0</div>
+</body>
+</html>
