@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    viewport-fit=cover: required for safe-area-inset-* to work on notched phones (iPhone X+).
+    maximum-scale=1.0 / user-scalable=no: prevents accidental pinch-zoom inside the activity.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Onboarding</title>
+  <style>
+    /* ─── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      /* Prevent text selection / long-press callout on iOS */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+
+      height: 100%; width: 100%;
+      overflow: hidden;
+      background: #111; /* dark base shown before the bg image loads */
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ─── CSS Custom Properties ──────────────────────────────────────────
+       Theme tokens are set here as defaults and overridden at runtime by
+       applyTheme() once the App and Settings records are fetched.
+
+       Tokens overridden by theme:
+         --color-primary   App primary brand colour (buttons, selections)
+         --radius-option   Corner radius for choice option buttons
+         --radius-action   Corner radius for the Continue / Finish button
+
+       Tokens overridden by contrast analysis:
+         --dot-active      Active progress dot and page title colour
+         --dot-inactive    Inactive progress dot colour
+    ────────────────────────────────────────────────────────────────────── */
+    :root {
+      --accent-done:   rgba(74,144,217,0.5); /* completed-step dot colour */
+      --safe-top:      env(safe-area-inset-top,    0px);
+      --safe-bottom:   env(safe-area-inset-bottom, 0px);
+
+      /* Contrast tokens — default to white (dark background) */
+      --dot-active:    #ffffff;
+      --dot-inactive:  rgba(255,255,255,0.35);
+
+      /* Theme tokens — defaults used until applyTheme() resolves them */
+      --color-primary: #4A90D9;
+      --radius-option: 999px;
+      --radius-action: 999px;
+    }
+
+    /*
+      theme-light is toggled on #shell by analyseContrast() when the
+      background image is too bright for white dots/title to be readable.
+    */
+    #shell.theme-light {
+      --dot-active:   #1a1a1a;
+      --dot-inactive: rgba(0,0,0,0.30);
+    }
+
+    /* ─── Shell ──────────────────────────────────────────────────────────
+       Full-viewport flex column. The background div sits behind (z-index 0)
+       and all content layers sit above it (z-index 1).
+    ────────────────────────────────────────────────────────────────────── */
+    #shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /*
+      Centred content column: max 520px wide so the layout looks intentional
+      on iPad rather than stretching edge-to-edge. The background image
+      still bleeds full-width behind it.
+    */
+    #header, #title, #content, #footer {
+      width: 100%;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ─── Background image ───────────────────────────────────────────────
+       #bg holds the full-bleed photo. The overlay gradient makes text
+       readable without a card or frosted glass behind it.
+
+       To adjust the dark region: edit the gradient stop percentages.
+       Currently: clear in the middle (30–72%), dark at top and heavy at bottom.
+    ────────────────────────────────────────────────────────────────────── */
+    #bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: #222; /* placeholder while image loads */
+    }
+    #bg img {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    #bg-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.25) 0%,   /* slight top vignette for dots/title legibility */
+        rgba(0,0,0,0.00) 30%,  /* clear window in the middle */
+        rgba(0,0,0,0.55) 72%,  /* fade begins — adjust this to raise/lower the dark area */
+        rgba(0,0,0,0.85) 100%  /* heavy at bottom for text and buttons */
+      );
+    }
+
+    /* ─── Loading screen ─────────────────────────────────────────────────
+       Shown while waiting for init messages. Hidden by hideLoading() once
+       all required messages (QUESTIONS, ACTIVITY, ACTIVITY_RESPONSE, CONFIG)
+       have arrived and the theme has been applied.
+    ────────────────────────────────────────────────────────────────────── */
+    #loading {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(0,0,0,0.55);
+      color: #ffffff;
+      font-size: 14px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Error screen ───────────────────────────────────────────────────
+       Shown by showError(). "Try again" re-sends READY_DYNAMIC_MEDIA and
+       resets all init flags. "Close" sends QUIT with INCOMPLETE.
+    ────────────────────────────────────────────────────────────────────── */
+    #error-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none; /* toggled to flex by showError() */
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      background: rgba(0,0,0,0.80);
+      color: #ffffff;
+    }
+    #error-screen .err-icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2.5px solid #e74c3c;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    #error-screen h2 { font-size: 18px; font-weight: 700; }
+    #error-screen p  { font-size: 14px; opacity: 0.8; line-height: 1.5; max-width: 260px; }
+    #error-retry {
+      padding: 12px 32px;
+      border-radius: 999px;
+      border: 2px solid #ffffff;
+      background: transparent;
+      color: #ffffff;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+    }
+    #error-close {
+      background: none; border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px; cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* ─── Content layout ─────────────────────────────────────────────────
+       Header, title, footer are fixed-height (flex-shrink: 0).
+       Content grows to fill remaining space and pins its children to the
+       bottom via justify-content: flex-end — so text/buttons sit just
+       above the action button regardless of screen height.
+    ────────────────────────────────────────────────────────────────────── */
+    #header, #title, #footer {
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+    #content {
+      position: relative;
+      z-index: 1;
+      flex: 1 1 auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 200px 20px 0; /* top padding pushes content away from the header */
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    /* ─── Progress dots ──────────────────────────────────────────────────
+       One dot per question. Active = current, done = completed, default = upcoming.
+       Colours use --dot-active / --dot-inactive which flip with theme-light.
+       Top padding = 80px + safe area so dots clear the phone status bar.
+    ────────────────────────────────────────────────────────────────────── */
+    #header {
+      padding-top: max(80px, calc(var(--safe-top) + 80px));
+      padding-bottom: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--dot-inactive);
+      transition: background 0.25s, transform 0.2s;
+    }
+    .dot.active { background: var(--dot-active); transform: scale(1.25); }
+    .dot.done   { background: var(--accent-done); }
+
+    /* ─── Page title ─────────────────────────────────────────────────────
+       Populated from q.label or q.dataLabel. Uses --dot-active so it
+       switches colour with the dots when the background is light.
+    ────────────────────────────────────────────────────────────────────── */
+    #title {
+      padding: 8px 24px 0;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--dot-active);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      min-height: 36px;
+    }
+
+    /* ─── Content text ───────────────────────────────────────────────────
+       Used for IMAGE_CONTENT body text and MULTICHOICE face label (question).
+       Always white — the gradient overlay provides the contrast against the photo.
+    ────────────────────────────────────────────────────────────────────── */
+    .content-text {
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.5;
+      text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      margin-bottom: 24px;
+    }
+
+    /* ─── Choice option group ────────────────────────────────────────────
+       Wraps all option buttons. margin-top separates it from the question
+       text; margin-bottom gives breathing room before the action button.
+    ────────────────────────────────────────────────────────────────────── */
+    .choice-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      margin-top: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* ─── DEFAULT option buttons (pills) ─────────────────────────────────
+       Used when optionDisplayType === 'DEFAULT'.
+       Unselected: transparent with white border.
+       Selected: filled with --color-primary (the app's brand colour).
+       Corner radius: --radius-option from the app's borderStyle.optionTile.
+    ────────────────────────────────────────────────────────────────────── */
+    .opt-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 55%;
+      max-width: 100%;
+      padding: 13px 28px;
+      border-radius: var(--radius-option);
+      border: 2px solid rgba(255,255,255,0.70);
+      background: transparent;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .opt-pill:active { transform: scale(0.96); }
+    .opt-pill.sel {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #ffffff;
+    }
+
+    /* ─── CHECKBOX option buttons ────────────────────────────────────────
+       Used when optionDisplayType is anything other than 'DEFAULT'.
+       Full-width rows — same visual style as pills but stretched to full
+       width with a checkbox indicator on the left.
+       Selected: primary colour fill on checkbox + primary border on row.
+       Tapping a selected option deselects it (toggle behaviour).
+    ────────────────────────────────────────────────────────────────────── */
+    .opt-check {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: var(--radius-option);
+      border: 2px solid rgba(255,255,255,0.70);
+      background: transparent;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .opt-check:active { transform: scale(0.96); }
+    .opt-check.sel {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #ffffff;
+    }
+
+    /* Checkbox square — left of label */
+    .chk-box {
+      width: 20px; height: 20px;
+      border-radius: 4px;
+      border: 2px solid rgba(255,255,255,0.70);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-check.sel .chk-box {
+      background: #ffffff;
+      border-color: #ffffff;
+    }
+    .opt-check.sel .chk-box::after {
+      content: '';
+      display: block;
+      width: 5px; height: 9px;
+      border-right: 2.5px solid var(--color-primary);
+      border-bottom: 2.5px solid var(--color-primary);
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+    .chk-label { flex: 1; }
+
+    /* ─── Action button (Continue / Finish) ──────────────────────────────
+       Disabled state: low opacity, no pointer events.
+       Enabled (.ready): full opacity, tappable.
+       Background: --color-primary from app theme.
+       Corner radius: --radius-action from app theme (global rounded).
+       Label switches to "Finish" on the last question via renderQuestion().
+    ────────────────────────────────────────────────────────────────────── */
+    #footer {
+      padding: 12px 20px;
+      padding-bottom: max(62px, calc(var(--safe-bottom) + 50px));
+      display: flex;
+      justify-content: center;
+    }
+    #continue-btn {
+      padding: 14px 44px;
+      border-radius: var(--radius-action);
+      border: none;
+      background: var(--color-primary);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      opacity: 0.45;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #continue-btn.ready { opacity: 1; pointer-events: auto; }
+    #continue-btn.ready:active { transform: scale(0.96); }
+
+    /* ─── Slide transition ───────────────────────────────────────────────
+       Applied to #content on every question change. The reflow trick
+       (void area.offsetWidth) forces the browser to restart the animation
+       even when the same class is re-applied.
+    ────────────────────────────────────────────────────────────────────── */
+    .slide-in { animation: slideIn 0.26s ease forwards; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0);    }
+    }
+  </style>
+</head>
+<body>
+<div id="shell">
+
+  <!-- Full-page background image + gradient overlay -->
+  <div id="bg">
+    <div id="bg-overlay"></div>
+  </div>
+
+  <!-- Loading screen — visible until all init messages arrive -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Loading&hellip;</span>
+  </div>
+
+  <!-- Error screen — shown on init timeout or missing content -->
+  <div id="error-screen">
+    <div class="err-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <line x1="14" y1="7" x2="14" y2="16" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="14" cy="21" r="1.5" fill="#e74c3c"/>
+      </svg>
+    </div>
+    <h2>Something went wrong</h2>
+    <p id="error-msg">We couldn&rsquo;t load this activity. Please check your connection and try again.</p>
+    <button id="error-retry">Try again</button>
+    <button id="error-close">Close</button>
+  </div>
+
+  <!-- Progress dots — one per question, rendered by renderProgress() -->
+  <div id="header" role="progressbar" aria-label="Progress"></div>
+
+  <!-- Page title — set from q.label or q.dataLabel -->
+  <div id="title"></div>
+
+  <!-- Question content — replaced on each question by renderQuestion() -->
+  <div id="content"></div>
+
+  <!-- Action button — label switches between "Continue" and "Finish" -->
+  <div id="footer">
+    <button id="continue-btn">Continue</button>
+  </div>
+
+</div>
+<script>
+'use strict';
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  ONBOARDING EXTERNAL TEMPLATE
+ *  Version: 2.0
+ *
+ *  Supported content block types:
+ *    IMAGE_CONTENT — full-page background image with optional body text.
+ *                    No answer submitted; uses NEXT_QUESTION to advance.
+ *    MULTICHOICE   — single-select question. Two visual layouts:
+ *                      optionDisplayType === 'DEFAULT'  → pill buttons
+ *                      optionDisplayType !== 'DEFAULT'  → checkbox rows
+ *                    Submits via QUESTION_RESPONSE with non-linear index.
+ *
+ *  Init sequence (must all arrive before rendering):
+ *    QUESTIONS, ACTIVITY, ACTIVITY_RESPONSE, CONFIG
+ *    (ACTIVITY_RESPONSE is required because it carries the app ID for theme fetch)
+ *
+ *  Theme: fetches App and Settings records in parallel on startup.
+ *    --color-primary  → button fill and selection colour
+ *    --radius-option  → corner radius of choice options (from borderStyle.optionTile)
+ *    --radius-action  → corner radius of Continue/Finish button (from rounded)
+ *
+ *  Contrast: samples the top third of each background image and toggles
+ *    #shell.theme-light to flip dots and title from white to dark when
+ *    the background is too bright (luminance > 200/255).
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// ─────────────────────────────────────────────────────────────────────────
+//  BRIDGE
+//
+//  All communication with the Cogniss container goes through postMessage.
+//  Two functions:
+//    postToApp(key, data)   — standard { key, data } envelope for all
+//                             messages except REST_REQUEST.
+//    postRestRequest(...)   — REST_REQUEST requires its own fields at the
+//                             top level rather than nested inside data.
+//
+//  Two message listeners are registered (document + window) because:
+//    - Android React Native fires on document
+//    - iOS React Native and web fire on window
+//  _lastMsg deduplicates so the same payload isn't handled twice.
+// ─────────────────────────────────────────────────────────────────────────
+
+var isNative = (typeof window.ReactNativeWebView !== 'undefined');
+
+function postToApp(key, data) {
+  try {
+    var text = JSON.stringify({ key: key, data: data !== undefined ? data : null });
+    if (isNative) window.ReactNativeWebView.postMessage(text);
+    else window.parent.postMessage(text, '*');
+  } catch (e) {}
+}
+
+/*
+ * REST_REQUEST fields must be top-level — not nested under 'data'.
+ * See: references/api-access.md
+ */
+function postRestRequest(id, method, model, data) {
+  try {
+    var text = JSON.stringify({
+      key: 'REST_REQUEST',
+      id: id,
+      method: method,
+      model: model,
+      data: data,
+      specialParams: null
+    });
+    if (isNative) window.ReactNativeWebView.postMessage(text);
+    else window.parent.postMessage(text, '*');
+  } catch (e) {}
+}
+
+var _lastMsg = null;
+function onMessage(evt) {
+  try {
+    if (!evt.data || evt.data === _lastMsg) return;
+    _lastMsg = evt.data;
+    var msg = JSON.parse(evt.data);
+    if (!msg || !msg.key) return;
+    handleMessage(msg);
+  } catch (e) {}
+}
+document.addEventListener('message', onMessage);
+window.addEventListener('message', onMessage);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  REST_REQUEST PROMISE HELPER
+//
+//  Wraps postRestRequest in a Promise. Each request gets a unique id;
+//  the REQUEST_RESPONSE handler in handleMessage resolves/rejects it.
+//
+//  Usage: restRequest('get', 'File', fileId).then(function(file) { ... })
+// ─────────────────────────────────────────────────────────────────────────
+
+var _reqId   = 0;
+var _pending = {};
+
+function restRequest(method, model, data) {
+  return new Promise(function(resolve, reject) {
+    var id = 'r' + (++_reqId);
+    _pending[id] = { resolve: resolve, reject: reject };
+    postRestRequest(id, method, model, data);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  STATE
+//
+//  All mutable runtime state in one object for clarity.
+//
+//  Init flags: set as each required init message arrives.
+//    checkReady() fires init() only when all four are true.
+//
+//  selections: { [qId]: optId | null }
+//    Stores the selected option ID per question. null = nothing selected.
+//    Preserved across re-renders so revisiting a question keeps the selection.
+//
+//  startTimes: { [qId]: timestamp }
+//    Records when each question was first shown — used to compute duration
+//    for the QUESTION_RESPONSE payload.
+//
+//  submitting: prevents double-submit if the user taps the button quickly.
+//  submitTimer: safety fallback that advances if the container never
+//    responds to QUESTION_RESPONSE within 4 seconds.
+// ─────────────────────────────────────────────────────────────────────────
+
+var state = {
+  // Init flags — all must be true before init() runs
+  gotQuestions:        false,
+  gotActivity:         false,
+  gotActivityResponse: false, // needed to get appId for theme fetch
+  gotConfig:           false,
+  ready:               false,
+
+  // Content
+  questions:    null,  // filtered to IMAGE_CONTENT + MULTICHOICE
+  currentIndex: 0,
+  appId:        null,  // extracted from ACTIVITY_RESPONSE.app
+
+  // Per-question answer state
+  selections: {},  // { [qId]: optId | null }
+  startTimes: {},  // { [qId]: Date.now() }
+
+  // Submission state
+  submitting:  false,
+  submitTimer: null
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+//  MEDIA CACHE
+//
+//  File URLs are fetched via REST_REQUEST and cached in _mediaCache so
+//  the same file is never requested twice in a session.
+//
+//  _renderGen is incremented each time renderQuestion() runs. Callbacks
+//  from fetchMedia() check their captured generation against the current
+//  value — if they differ, the page has moved on and the callback bails
+//  without touching the DOM.
+//
+//  _cacheBust is appended to every URL to bypass any stale browser cache
+//  from a previous session.
+// ─────────────────────────────────────────────────────────────────────────
+
+var _mediaCache = {};
+var _renderGen  = 0;
+var _cacheBust  = '?_t=' + Date.now();
+
+function fetchMedia(fileId, cb) {
+  if (!fileId) { cb(null); return; }
+  if (Object.prototype.hasOwnProperty.call(_mediaCache, fileId)) {
+    cb(_mediaCache[fileId]);
+    return;
+  }
+  var gen = _renderGen;
+  restRequest('get', 'File', fileId)
+    .then(function(file) {
+      if (_renderGen !== gen) return; // page moved on — discard
+      var url = (file && file.url) ? file.url + _cacheBust : null;
+      _mediaCache[fileId] = url;
+      cb(url);
+    })
+    .catch(function() {
+      if (_renderGen !== gen) return;
+      _mediaCache[fileId] = null;
+      cb(null);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  INBOUND MESSAGE HANDLER
+//
+//  QUESTIONS    — filters to IMAGE_CONTENT and MULTICHOICE only.
+//                 Ignored after state.ready is set (prevents re-init
+//                 if the container re-sends).
+//  ACTIVITY_RESPONSE — captures appId for theme fetch. Also sets the
+//                 gotActivityResponse flag required by checkReady().
+//  ACTIVITY, CONFIG — just set their flags and call checkReady().
+//  QUESTION_RESPONSE — container confirms the answer was recorded.
+//                 Clears the safety timer and advances to the next question.
+//  REQUEST_RESPONSE  — resolves/rejects the matching restRequest() promise.
+// ─────────────────────────────────────────────────────────────────────────
+
+function handleMessage(msg) {
+  switch (msg.key) {
+
+    case 'QUESTIONS':
+      if (state.ready) break; // ignore re-sends after init
+      var all = Array.isArray(msg.data) ? msg.data : [];
+      state.questions = all.filter(function(q) {
+        return q && (q.type === 'IMAGE_CONTENT' || q.type === 'MULTICHOICE');
+      });
+      state.gotQuestions = true;
+      checkReady();
+      break;
+
+    case 'ACTIVITY_RESPONSE':
+      /*
+       * ACTIVITY_RESPONSE carries the app ID needed to fetch the App theme.
+       * We require it before init() so applyTheme() always has a valid appId.
+       */
+      if (msg.data && msg.data.app) state.appId = msg.data.app;
+      state.gotActivityResponse = true;
+      checkReady();
+      break;
+
+    case 'ACTIVITY':
+      state.gotActivity = true;
+      checkReady();
+      break;
+
+    case 'CONFIG':
+      state.gotConfig = true;
+      checkReady();
+      break;
+
+    case 'QUESTION_RESPONSE':
+      /*
+       * The container has recorded the answer. Clear the safety timeout
+       * and advance. Using setTimeout(advance, 0) defers the advance to
+       * the next event loop tick, avoiding a postMessage re-entrancy
+       * crash on Android React Native.
+       */
+      if (state.submitting) {
+        clearTimeout(state.submitTimer);
+        state.submitting = false;
+        setTimeout(advance, 0);
+      }
+      break;
+
+    case 'REQUEST_RESPONSE':
+      var p = _pending[msg.id];
+      if (p) {
+        delete _pending[msg.id];
+        if (msg.error) p.reject(new Error(msg.error));
+        else p.resolve(msg.data);
+      }
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  INIT
+//
+//  _initTimer fires after 10 seconds if the required init messages never
+//  arrive — shows an error rather than hanging on the loading screen.
+//
+//  checkReady() is called by every init message handler. Once all four
+//  flags are set it fires init() exactly once (guarded by state.ready).
+//
+//  init() fetches the theme first (applyTheme), then renders. This ensures
+//  --color-primary and border-radius tokens are set before any buttons appear.
+// ─────────────────────────────────────────────────────────────────────────
+
+var _initTimer = setTimeout(function() {
+  if (!state.ready) {
+    showError('Activity took too long to load. Please close and try again.');
+  }
+}, 10000);
+
+function checkReady() {
+  if (state.ready) return;
+  if (state.gotQuestions && state.gotActivity && state.gotActivityResponse && state.gotConfig) {
+    state.ready = true;
+    clearTimeout(_initTimer);
+    init();
+  }
+}
+
+function init() {
+  if (!state.questions || state.questions.length === 0) {
+    showError('No content blocks found for this activity.');
+    return;
+  }
+  hideLoading();
+  // Apply theme before first render so CSS tokens are correct from the start
+  applyTheme(function() {
+    renderProgress();
+    renderQuestion(0);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  THEME
+//
+//  Fetches App and platform Settings records in parallel and merges them
+//  (App takes precedence field-by-field). Applies three CSS custom properties:
+//
+//    --color-primary   From colors.primary — used for button fills and
+//                      selected-state highlight colours.
+//    --radius-option   From borderStyle.optionTile — controls corner radius
+//                      of choice option buttons. Falls back to global rounded.
+//    --radius-action   From rounded — controls Continue/Finish button radius.
+//
+//  RADIUS_MAP converts the platform's enum strings to pixel values:
+//    NONE=0, SMALL=4, MEDIUM=8, LARGE=16, FULL=9999 (pill)
+//
+//  A 3-second safety timer renders with defaults if either fetch hangs.
+//  If you add new theme fields, add them in applyVars() and update RADIUS_MAP
+//  if new enum values are introduced by the platform.
+// ─────────────────────────────────────────────────────────────────────────
+
+var RADIUS_MAP = {
+  NONE:   '0px',
+  SMALL:  '4px',
+  MEDIUM: '8px',
+  LARGE:  '16px',
+  FULL:   '9999px'
+};
+
+function applyTheme(cb) {
+  var appTheme      = {};
+  var platformTheme = {};
+  var done          = 0;
+  var called        = false;
+
+  // Safety: render with defaults if theme fetches take too long
+  var themeTimer = setTimeout(function() {
+    if (!called) {
+      called = true;
+      postToApp('LOG', { theme: 'timeout — using defaults' });
+      applyVars(appTheme, platformTheme);
+      cb();
+    }
+  }, 3000);
+
+  function onFetchDone() {
+    done++;
+    if (done < 2 || called) return;
+    called = true;
+    clearTimeout(themeTimer);
+    postToApp('LOG', {
+      appTheme:      JSON.stringify(appTheme),
+      platformTheme: JSON.stringify(platformTheme)
+    });
+    applyVars(appTheme, platformTheme);
+    cb();
+  }
+
+  // App record carries borderStyle and colors.primary
+  restRequest('get', 'App', state.appId)
+    .then(function(app) {
+      appTheme = (app && app.theme) || {};
+      onFetchDone();
+    })
+    .catch(function(e) {
+      postToApp('LOG', { appThemeError: e && e.message });
+      onFetchDone();
+    });
+
+  // Settings is a singleton — list with no filter, take first result
+  restRequest('list', 'Settings', null)
+    .then(function(res) {
+      var items = res && res.items;
+      platformTheme = (items && items.length > 0 && items[0].theme) || {};
+      onFetchDone();
+    })
+    .catch(function(e) {
+      postToApp('LOG', { platformThemeError: e && e.message });
+      onFetchDone();
+    });
+}
+
+function applyVars(appTheme, platformTheme) {
+  // Merge: App values override platform values for the same field
+  var colors  = Object.assign({}, platformTheme.colors  || {}, appTheme.colors  || {});
+  var rounded = appTheme.rounded || platformTheme.rounded;
+  var optTile = appTheme.borderStyle && appTheme.borderStyle.optionTile;
+  var root    = document.documentElement;
+
+  var baseRadius = RADIUS_MAP[rounded]  || '999px';
+  var optRadius  = RADIUS_MAP[optTile]  || baseRadius;
+
+  if (colors.primary) root.style.setProperty('--color-primary', colors.primary);
+  root.style.setProperty('--radius-option', optRadius);
+  root.style.setProperty('--radius-action', baseRadius);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  RENDER — PROGRESS DOTS
+//
+//  Clears and rebuilds the dots row on every question advance.
+//  To add a back button or step counter here, append to #header after
+//  the dots loop.
+// ─────────────────────────────────────────────────────────────────────────
+
+function renderProgress() {
+  var header = document.getElementById('header');
+  header.innerHTML = '';
+  for (var i = 0; i < state.questions.length; i++) {
+    var dot = document.createElement('div');
+    dot.className = 'dot' +
+      (i === state.currentIndex ? ' active' : i < state.currentIndex ? ' done' : '');
+    header.appendChild(dot);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  RENDER — QUESTION
+//
+//  _renderGen is incremented here to invalidate any in-flight media
+//  callbacks from the previous question.
+//
+//  The reflow trick (void area.offsetWidth) forces the browser to restart
+//  the slide-in animation even if the same class is re-applied.
+//
+//  Button label: "Finish" on the last question, "Continue" on all others.
+// ─────────────────────────────────────────────────────────────────────────
+
+function renderQuestion(idx) {
+  var q = state.questions[idx];
+  if (!q) return;
+
+  _renderGen++; // invalidate stale media callbacks from previous question
+
+  document.getElementById('title').textContent = q.label || q.dataLabel || '';
+  setBackground(q.image);
+
+  var isLast = (idx === state.questions.length - 1);
+  document.getElementById('continue-btn').textContent = isLast ? 'Finish' : 'Continue';
+
+  var area = document.getElementById('content');
+  area.innerHTML = '';
+  area.className = '';
+  void area.offsetWidth; // flush reflow to restart animation
+  area.className = 'slide-in';
+
+  if (q.type === 'IMAGE_CONTENT') {
+    renderImageContent(q, area);
+  } else {
+    renderMultichoice(q, area);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  BACKGROUND IMAGE + CONTRAST ANALYSIS
+//
+//  setBackground() fetches the image URL and injects it into #bg.
+//  It skips the fetch if the same image is already showing (identified by
+//  data-file-id on the img element).
+//
+//  analyseContrast() draws the image onto a tiny 40×40 canvas and samples
+//  only the top third (where the dots and title sit). It uses the ITU-R
+//  BT.709 perceived-luminance formula. If the average exceeds 200/255
+//  (~78% brightness), the background is considered light and theme-light
+//  is applied, switching dots and title to dark colours.
+//
+//  crossOrigin = 'anonymous' is required for canvas.getImageData() to work
+//  when the image is served from a different origin (CORS). If the server
+//  doesn't set Access-Control-Allow-Origin the canvas read is blocked and
+//  the catch silently keeps the default (white) theme.
+// ─────────────────────────────────────────────────────────────────────────
+
+function setBackground(imageId) {
+  if (!imageId) return;
+  var bg = document.getElementById('bg');
+  var existing = bg.querySelector('img');
+  // Skip fetch if same image is already displayed
+  if (existing && existing.dataset.fileId === imageId) return;
+
+  var gen = _renderGen;
+  fetchMedia(imageId, function(url) {
+    if (!url || _renderGen !== gen) return;
+    var old = bg.querySelector('img');
+    if (old) old.remove();
+    var img = document.createElement('img');
+    img.dataset.fileId = imageId;
+    img.alt = '';
+    img.crossOrigin = 'anonymous'; // required for canvas contrast read
+    img.onload = function() { analyseContrast(img); };
+    img.src = url;
+    bg.insertBefore(img, bg.firstChild);
+  });
+}
+
+function analyseContrast(img) {
+  try {
+    var W = 40; var H = 40;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0, W, H);
+    // Sample top third only — that's where dots and title live
+    var pixels = ctx.getImageData(0, 0, W, Math.floor(H / 3)).data;
+    var sum = 0; var n = 0;
+    for (var i = 0; i < pixels.length; i += 4) {
+      // ITU-R BT.709 perceived luminance
+      sum += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+      n++;
+    }
+    var shell = document.getElementById('shell');
+    if (n > 0 && (sum / n) > 200) shell.classList.add('theme-light');
+    else shell.classList.remove('theme-light');
+  } catch (e) {
+    // Canvas tainted (CORS) — keep default white theme
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  RENDER — IMAGE_CONTENT
+//
+//  Display-only block. Shows the question body text (if any) and enables
+//  Continue immediately — no answer required.
+//  Uses textContent (not innerHTML) to prevent XSS from untrusted text.
+// ─────────────────────────────────────────────────────────────────────────
+
+function renderImageContent(q, area) {
+  if (q.text) {
+    var el = document.createElement('div');
+    el.className = 'content-text';
+    el.textContent = q.text; // safe — no innerHTML
+    area.appendChild(el);
+  }
+  setContinue(true);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  RENDER — MULTICHOICE
+//
+//  Layout is determined by q.optionDisplayType:
+//    'DEFAULT'      → .opt-pill  (centred transparent pills)
+//    anything else  → .opt-check (full-width rows with checkbox)
+//
+//  Selection state lives in state.selections[qId] (one optId or null).
+//  Tapping a selected option deselects it (setContinue(false)).
+//  Tapping a different option clears the previous selection.
+//
+//  q.id is used as qId (web); q._id is the mobile fallback.
+//  opt.id / opt._id follow the same pattern for option IDs.
+//
+//  textContent is used throughout (not innerHTML) to prevent XSS.
+// ─────────────────────────────────────────────────────────────────────────
+
+function renderMultichoice(q, area) {
+  var qId = q.id || q._id;
+
+  // Initialise selection state for this question if first visit
+  if (!Object.prototype.hasOwnProperty.call(state.selections, qId)) {
+    state.selections[qId] = null;
+    state.startTimes[qId] = Date.now();
+  }
+
+  var isCheckbox   = q.optionDisplayType !== 'DEFAULT';
+  var opts         = Array.isArray(q.options) ? q.options : [];
+  var currentSelId = state.selections[qId];
+
+  // Question text / face label
+  if (q.text) {
+    var lbl = document.createElement('div');
+    lbl.className = 'content-text';
+    lbl.textContent = q.text;
+    area.appendChild(lbl);
+  }
+
+  var group = document.createElement('div');
+  group.className = 'choice-group';
+
+  opts.forEach(function(opt) {
+    if (!opt || (!opt.id && !opt._id)) return; // skip malformed options
+    var optId = opt.id || opt._id;
+    var label = opt.label || opt.text || '';
+    var isSel = (currentSelId === optId);
+    var btn   = document.createElement('button');
+
+    if (isCheckbox) {
+      btn.className = 'opt-check' + (isSel ? ' sel' : '');
+      var box = document.createElement('div');
+      box.className = 'chk-box';
+      btn.appendChild(box);
+      var lblEl = document.createElement('span');
+      lblEl.className = 'chk-label';
+      lblEl.textContent = label; // safe
+      btn.appendChild(lblEl);
+    } else {
+      btn.className = 'opt-pill' + (isSel ? ' sel' : '');
+      btn.textContent = label; // safe
+    }
+
+    btn.addEventListener('click', function() {
+      if (state.submitting) return;
+
+      if (state.selections[qId] === optId) {
+        // Toggle off — deselect
+        state.selections[qId] = null;
+        btn.classList.remove('sel');
+        setContinue(false);
+      } else {
+        // Select this, clear others
+        group.querySelectorAll('.opt-pill, .opt-check').forEach(function(b) {
+          b.classList.remove('sel');
+        });
+        state.selections[qId] = optId;
+        btn.classList.add('sel');
+        setContinue(true);
+      }
+    });
+
+    group.appendChild(btn);
+  });
+
+  area.appendChild(group);
+  setContinue(currentSelId !== null);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  SUBMIT & ADVANCE
+//
+//  Continue/Finish button click handler.
+//
+//  IMAGE_CONTENT:
+//    No answer to submit. Sends NEXT_QUESTION to advance the container's
+//    internal linear index, then advances locally via setTimeout(advance, 0).
+//    The setTimeout is required to avoid postMessage re-entrancy on Android.
+//
+//  MULTICHOICE:
+//    Submits via QUESTION_RESPONSE using non-linear index mode.
+//    'index' tells the container which question to answer without advancing
+//    its own linear pointer — no 'question' ID or parentActivityResponse needed.
+//    Waits for the container's QUESTION_RESPONSE callback before advancing.
+//    Safety timer advances after 4s if callback never arrives.
+//
+//  advance():
+//    Increments currentIndex and re-renders, or sends QUIT on completion.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+//  SWIPE GESTURE
+//
+//  A left swipe on #content triggers the same action as tapping Continue:
+//    IMAGE_CONTENT — always allowed.
+//    MULTICHOICE   — only allowed after an option is selected (state.selections[qId] !== null).
+//
+//  Detection: touchstart records the origin; touchend fires if:
+//    - horizontal distance > SWIPE_MIN_X (50px)
+//    - vertical drift < SWIPE_MAX_Y (80px) — prevents triggering on scrolls
+//    - direction is left-to-right (deltaX < 0)
+//
+//  The swipe calls the same internal submit path as the button so all the
+//  same guards (state.submitting, selection check, safety timer) apply.
+// ─────────────────────────────────────────────────────────────────────────
+
+var SWIPE_MIN_X = 50;  // minimum horizontal distance to count as a swipe (px)
+var SWIPE_MAX_Y = 80;  // maximum vertical drift allowed (px)
+
+(function() {
+  var startX = 0;
+  var startY = 0;
+  var tracking = false;
+
+  var el = document.getElementById('content');
+
+  el.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+
+  el.addEventListener('touchend', function(e) {
+    if (!tracking) return;
+    tracking = false;
+
+    var deltaX = e.changedTouches[0].clientX - startX;
+    var deltaY = e.changedTouches[0].clientY - startY;
+
+    // Must be a left swipe, horizontal enough, and not a vertical scroll
+    if (deltaX >= -SWIPE_MIN_X) return;
+    if (Math.abs(deltaY) > SWIPE_MAX_Y) return;
+
+    triggerContinue();
+  }, { passive: true });
+
+  el.addEventListener('touchcancel', function() { tracking = false; }, { passive: true });
+})();
+
+/*
+ * triggerContinue() — shared logic called by both the button click and swipe.
+ * Mirrors the button handler exactly so behaviour is identical either way.
+ */
+function triggerContinue() {
+  if (state.submitting) return;
+
+  var q = state.questions[state.currentIndex];
+  if (!q) return;
+
+  if (q.type === 'IMAGE_CONTENT') {
+    state.submitting = true;
+    setContinue(false);
+    postToApp('NEXT_QUESTION');
+    setTimeout(advance, 0);
+    return;
+  }
+
+  // MULTICHOICE — only allow swipe if an option has been selected
+  var qId   = q.id || q._id;
+  var optId = state.selections[qId];
+  if (!optId) return; // swipe blocked — no selection yet
+
+  state.submitting = true;
+  setContinue(false);
+
+  var duration = Math.round((Date.now() - (state.startTimes[qId] || Date.now())) / 1000);
+
+  postToApp('QUESTION_RESPONSE', {
+    index:    state.currentIndex,
+    option:   { _id: optId },
+    duration: duration
+  });
+
+  state.submitTimer = setTimeout(function() {
+    if (state.submitting) { state.submitting = false; advance(); }
+  }, 4000);
+}
+
+// Button click delegates to the shared triggerContinue() function
+document.getElementById('continue-btn').addEventListener('click', triggerContinue);
+
+function advance() {
+  state.submitting = false;
+  if (state.currentIndex < state.questions.length - 1) {
+    state.currentIndex++;
+    renderProgress();
+    renderQuestion(state.currentIndex);
+  } else {
+    postToApp('QUIT', { completeState: 'COMPLETE' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  UI HELPERS
+// ─────────────────────────────────────────────────────────────────────────
+
+function setContinue(enabled) {
+  var btn = document.getElementById('continue-btn');
+  if (enabled) btn.classList.add('ready');
+  else btn.classList.remove('ready');
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading');
+  if (el) el.style.display = 'none';
+}
+
+/*
+ * showError() — call with a human-readable message string.
+ * Uses textContent (not innerHTML) to prevent XSS from error strings.
+ */
+function showError(msg) {
+  hideLoading();
+  document.getElementById('error-msg').textContent = msg || 'Something went wrong.';
+  document.getElementById('error-screen').style.display = 'flex';
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  ERROR SCREEN ACTIONS
+//
+//  Retry: resets all init flags (including gotActivityResponse so the
+//    theme fetch will re-run) and re-sends READY_DYNAMIC_MEDIA.
+//  Close: sends QUIT with INCOMPLETE so the container navigates away.
+// ─────────────────────────────────────────────────────────────────────────
+
+document.getElementById('error-retry').addEventListener('click', function() {
+  document.getElementById('error-screen').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  // Reset all init flags — including gotActivityResponse so theme re-fetches
+  state.gotQuestions        = false;
+  state.gotActivity         = false;
+  state.gotActivityResponse = false;
+  state.gotConfig           = false;
+  state.ready               = false;
+  state.questions           = null;
+  state.currentIndex        = 0;
+  state.appId               = null;
+  postToApp('READY_DYNAMIC_MEDIA');
+});
+
+document.getElementById('error-close').addEventListener('click', function() {
+  postToApp('QUIT', { completeState: 'INCOMPLETE' });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  BOOT
+//  Signals the container that the template is ready to receive data.
+//  READY_DYNAMIC_MEDIA skips media preloading — the template fetches
+//  media on demand via REST_REQUEST as each question is rendered.
+// ─────────────────────────────────────────────────────────────────────────
+postToApp('READY_DYNAMIC_MEDIA');
+</script>
+</body>
+</html>
