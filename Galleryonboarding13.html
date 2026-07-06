@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Onboarding</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    :root {
+      --accent-done:  rgba(74,144,217,0.5);
+      --radius-card:  16px;
+      --radius-pill:  999px;
+      --safe-top:     env(safe-area-inset-top,  0px);
+      --safe-bottom:  env(safe-area-inset-bottom, 0px);
+
+      /* Only these two adapt based on background luminance */
+      --dot-active:   #ffffff;
+      --dot-inactive: rgba(255,255,255,0.35);
+    }
+
+    /* Light background — darken dots and title only */
+    #shell.theme-light {
+      --dot-active:   #1a1a1a;
+      --dot-inactive: rgba(0,0,0,0.30);
+    }
+
+    html, body {
+      height: 100%; width: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ─── Shell ─────────────────────────────── */
+    #shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* Content column — centred, max width on wide screens */
+    #header, #title, #content, #footer, #feedback {
+      width: 100%;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ─── Background image ───────────────────── */
+    #bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: #222;
+    }
+    #bg img {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    #bg-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.25) 0%,
+        rgba(0,0,0,0.00) 30%,
+        rgba(0,0,0,0.55) 60%,
+        rgba(0,0,0,0.85) 100%
+      );
+    }
+
+    /* ─── Loading ────────────────────────────── */
+    #loading {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(0,0,0,0.55);
+      color: var(--white);
+      font-size: 14px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-top-color: var(--white);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Error screen ───────────────────────── */
+    #error-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      background: rgba(0,0,0,0.72);
+      color: var(--white);
+    }
+    #error-screen .err-icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2.5px solid #e74c3c;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #error-screen h2 { font-size: 18px; font-weight: 700; }
+    #error-screen p  { font-size: 14px; opacity: 0.8; line-height: 1.5; max-width: 260px; }
+    #error-retry {
+      padding: 12px 32px;
+      border-radius: var(--radius-pill);
+      border: 2px solid var(--white);
+      background: transparent;
+      color: var(--white);
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+    }
+    #error-close {
+      background: none; border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px; cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* ─── Layout layers ──────────────────────── */
+    #header, #title, #footer, #feedback {
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+    #content {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── Header — progress dots ─────────────── */
+    #header {
+      padding-top: max(80px, calc(var(--safe-top) + 80px));
+      padding-bottom: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--dot-inactive);
+      transition: background 0.25s, transform 0.2s;
+    }
+    .dot.active  { background: var(--dot-active);  transform: scale(1.25); }
+    .dot.done    { background: var(--accent-done); }
+
+    /* ─── Title ──────────────────────────────── */
+    #title {
+      padding: 8px 24px 0;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--dot-active);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      min-height: 36px;
+    }
+
+    /* ─── Content area ───────────────────────── */
+    #content {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 200px 20px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    /* ─── Content group (no background — gradient does the work) ── */
+    .group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    /* ─── IMAGE_CONTENT text ─────────────────── */
+    .img-text {
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.5;
+      text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* ─── Choice face label ──────────────────── */
+    .face-label {
+      width: 100%;
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      line-height: 1.4;
+    }
+
+    /* ─── DEFAULT option button (pill) ───────── */
+    .opt {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 55%;
+      max-width: 100%;
+      padding: 13px 28px;
+      border-radius: var(--radius-pill);
+      border: 2px solid rgba(255,255,255,0.70);
+      background: transparent;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .opt:active { transform: scale(0.96); }
+    .opt.sel {
+      background: rgba(255,255,255,0.95);
+      border-color: transparent;
+      color: #1a1a1a;
+    }
+
+    /* Checkmark circle (MULTISELECT) */
+    .chk {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.70);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt.sel .chk {
+      background: #1a1a1a;
+      border-color: #1a1a1a;
+    }
+    .opt.sel .chk::after {
+      content: '';
+      display: block;
+      width: 5px; height: 9px;
+      border-right: 2px solid #ffffff;
+      border-bottom: 2px solid #ffffff;
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+
+    /* ─── ICON_SELECT option (full-width row) ─── */
+    .opt.icon-row {
+      align-self: stretch;
+      border-radius: 14px;
+      padding: 10px 14px;
+      justify-content: flex-start;
+      text-align: left;
+    }
+    .opt.icon-row .opt-img {
+      width: 44px; height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: rgba(128,128,128,0.20);
+    }
+    .opt.icon-row .opt-lbl { flex: 1; text-align: center; }
+
+    /* ─── GRID_ICON_SELECT ───────────────────── */
+    .opts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+    }
+    .opt.grid-cell {
+      flex-direction: column;
+      align-self: stretch;
+      border-radius: 14px;
+      padding: 14px 10px;
+      gap: 8px;
+      min-width: unset;
+      width: 100%;
+    }
+    .opt.grid-cell .opt-img {
+      width: 56px; height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: rgba(128,128,128,0.20);
+    }
+    .opt.grid-cell .opt-lbl {
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    /* ─── Feedback ───────────────────────────── */
+    #feedback {
+      position: relative; z-index: 1;
+      min-height: 24px;
+      padding: 4px 20px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+    }
+    #feedback.err { color: #ff6b6b; }
+
+    /* ─── Footer ─────────────────────────────── */
+    #footer {
+      padding: 4px 20px;
+      padding-bottom: max(32px, calc(var(--safe-bottom) + 20px));
+      display: flex;
+      justify-content: center;
+    }
+    #continue-btn {
+      padding: 14px 44px;
+      border-radius: var(--radius-pill);
+      border: 2px solid rgba(255,255,255,0.70);
+      background: transparent;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      opacity: 0.45;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #continue-btn.ready { opacity: 1; pointer-events: auto; }
+    #continue-btn.ready:active { transform: scale(0.96); }
+
+    /* ─── Slide transition ───────────────────── */
+    .slide-in {
+      animation: slideIn 0.26s ease forwards;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0);    }
+    }
+  </style>
+</head>
+<body>
+<div id="shell">
+
+  <!-- Full-page background -->
+  <div id="bg">
+    <div id="bg-overlay"></div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Loading…</span>
+  </div>
+
+  <!-- Error -->
+  <div id="error-screen">
+    <div class="err-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <line x1="14" y1="7"  x2="14" y2="16" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="14" cy="21" r="1.5" fill="#e74c3c"/>
+      </svg>
+    </div>
+    <h2>Something went wrong</h2>
+    <p id="error-msg">We couldn't load this activity. Please check your connection and try again.</p>
+    <button id="error-retry">Try again</button>
+    <button id="error-close">Close</button>
+  </div>
+
+  <!-- Header — progress dots -->
+  <div id="header"></div>
+
+  <!-- Page title (data label) -->
+  <div id="title"></div>
+
+  <!-- Main content -->
+  <div id="content"></div>
+
+  <!-- Feedback -->
+  <div id="feedback"></div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <button id="continue-btn">Continue</button>
+  </div>
+
+</div>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+//  DEBUG — surface all errors as alerts
+// ═══════════════════════════════════════════════
+window.onerror = function(msg, src, line, col, err) {
+  alert('JS ERROR\n' + msg + '\n' + src + ':' + line);
+  return false;
+};
+window.onunhandledrejection = function(e) {
+  alert('UNHANDLED PROMISE\n' + (e.reason && (e.reason.message || e.reason)));
+};
+
+// ═══════════════════════════════════════════════
+//  BRIDGE
+// ═══════════════════════════════════════════════
+
+var isNative = (typeof window.ReactNativeWebView !== 'undefined');
+
+// Standard envelope: { key, data } — used for all messages except REST_REQUEST
+function postToApp(key, data) {
+  try {
+    var text = JSON.stringify({ key: key, data: data !== undefined ? data : null });
+    if (isNative) window.ReactNativeWebView.postMessage(text);
+    else window.parent.postMessage(text, '*');
+  } catch (e) {}
+}
+
+// REST_REQUEST requires its fields at the top level — not nested under data
+function postRestRequest(id, method, model, data) {
+  try {
+    var text = JSON.stringify({
+      key: 'REST_REQUEST',
+      id: id,
+      method: method,
+      model: model,
+      data: data,
+      specialParams: null
+    });
+    if (isNative) window.ReactNativeWebView.postMessage(text);
+    else window.parent.postMessage(text, '*');
+  } catch (e) {}
+}
+
+// Deduplicate: Android fires on document, iOS/web fires on window — both listeners needed
+var _lastMsg = null;
+function onMessage(evt) {
+  try {
+    if (!evt.data || evt.data === _lastMsg) return;
+    _lastMsg = evt.data;
+    var msg = JSON.parse(evt.data);
+    if (!msg || !msg.key) return;
+    handleMessage(msg);
+  } catch (e) {}
+}
+document.addEventListener('message', onMessage);
+window.addEventListener('message', onMessage);
+
+// ═══════════════════════════════════════════════
+//  REST_REQUEST — promise helper
+// ═══════════════════════════════════════════════
+
+var _reqId = 0;
+var _pending = {};
+
+function restRequest(method, model, data) {
+  return new Promise(function(resolve, reject) {
+    var id = 'r' + (++_reqId);
+    _pending[id] = { resolve: resolve, reject: reject };
+    postRestRequest(id, method, model, data);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+
+var state = {
+  // Init flags
+  gotQuestions:      false,
+  gotActivity:       false,
+  gotConfig:         false,
+  ready:             false,
+  // Content
+  questions:         null,
+  currentIndex:      0,
+  activityResponseId: null,   // stored from ACTIVITY_RESPONSE message
+  // Per-question answer state: { [questionId]: { [optionId]: true } }
+  selections:        {},
+  startTimes:        {},
+  // Submission lock
+  submitting:        false,
+  submitTimer:       null
+};
+
+// ═══════════════════════════════════════════════
+//  MEDIA
+// ═══════════════════════════════════════════════
+
+var _mediaCache = {};
+var _renderGen  = 0;
+var _cacheBust  = '?_t=' + Date.now();
+
+function fetchMedia(fileId, cb) {
+  if (!fileId) { cb(null); return; }
+  if (Object.prototype.hasOwnProperty.call(_mediaCache, fileId)) {
+    cb(_mediaCache[fileId]);
+    return;
+  }
+  var gen = _renderGen;
+  restRequest('get', 'File', fileId)
+    .then(function(file) {
+      if (_renderGen !== gen) return;
+      var url = (file && file.url) ? file.url + _cacheBust : null;
+      _mediaCache[fileId] = url;
+      cb(url);
+    })
+    .catch(function() {
+      if (_renderGen !== gen) return;
+      _mediaCache[fileId] = null;
+      cb(null);
+    });
+}
+
+// ═══════════════════════════════════════════════
+//  INBOUND MESSAGES
+// ═══════════════════════════════════════════════
+
+function handleMessage(msg) {
+  switch (msg.key) {
+
+    case 'QUESTIONS':
+      if (state.ready) break;
+      var all = Array.isArray(msg.data) ? msg.data : [];
+      state.questions = all.filter(function(q) {
+        return q && (
+          q.type === 'IMAGE_CONTENT' ||
+          q.type === 'MULTICHOICE'   ||
+          q.type === 'MULTISELECT'
+        );
+      });
+      state.gotQuestions = true;
+      checkReady();
+      break;
+
+    case 'ACTIVITY_RESPONSE':
+      if (msg.data && msg.data.id) state.activityResponseId = msg.data.id;
+      break;
+
+    case 'ACTIVITY':
+      state.gotActivity = true;
+      checkReady();
+      break;
+
+    case 'CONFIG':
+      state.gotConfig = true;
+      checkReady();
+      break;
+
+    case 'QUESTION_RESPONSE':
+      alert('GOT QUESTION_RESPONSE\n' + JSON.stringify(msg.data));
+      if (state.submitting) {
+        clearTimeout(state.submitTimer);
+        state.submitting = false;
+        setTimeout(advance, 0);
+      }
+      break;
+
+    case 'REQUEST_RESPONSE':
+      var p = _pending[msg.id];
+      if (p) {
+        delete _pending[msg.id];
+        if (msg.error) p.reject(new Error(msg.error));
+        else p.resolve(msg.data);
+      }
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+
+var _initTimer = setTimeout(function() {
+  if (!state.ready) showError('Activity took too long to load. Please close and try again.');
+}, 10000);
+
+function checkReady() {
+  if (state.ready) return;
+  if (state.gotQuestions && state.gotActivity && state.gotConfig) {
+    state.ready = true;
+    clearTimeout(_initTimer);
+    init();
+  }
+}
+
+function init() {
+  if (!state.questions || state.questions.length === 0) {
+    showError('No content blocks found for this activity.');
+    return;
+  }
+  hideLoading();
+  renderProgress();
+  renderQuestion(0);
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER — PROGRESS DOTS
+// ═══════════════════════════════════════════════
+
+function renderProgress() {
+  var header = document.getElementById('header');
+  header.innerHTML = '';
+  var n = state.questions.length;
+  for (var i = 0; i < n; i++) {
+    var dot = document.createElement('div');
+    dot.className = 'dot' +
+      (i === state.currentIndex ? ' active' : i < state.currentIndex ? ' done' : '');
+    header.appendChild(dot);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER — QUESTION
+// ═══════════════════════════════════════════════
+
+function renderQuestion(idx) {
+  var q = state.questions[idx];
+  if (!q) return;
+
+  _renderGen++;
+
+  document.getElementById('title').textContent = q.label || q.dataLabel || '';
+  setFeedback('');
+  setBackground(q.image);
+
+  var area = document.getElementById('content');
+  area.innerHTML = '';
+  area.className = '';
+  void area.offsetWidth; // flush reflow so animation restarts
+  area.className = 'slide-in';
+
+  if (q.type === 'IMAGE_CONTENT') {
+    renderImageContent(q, area);
+  } else {
+    renderChoiceContent(q, area);
+  }
+}
+
+// ─── Background ──────────────────────────────
+
+function setBackground(imageId) {
+  if (!imageId) return;
+  var bg = document.getElementById('bg');
+  var existing = bg.querySelector('img');
+  if (existing && existing.dataset.fileId === imageId) return;
+
+  var gen = _renderGen;
+  fetchMedia(imageId, function(url) {
+    if (!url || _renderGen !== gen) return;
+    var old = bg.querySelector('img');
+    if (old) old.remove();
+    var img = document.createElement('img');
+    img.dataset.fileId = imageId;
+    img.alt = '';
+    img.crossOrigin = 'anonymous';
+    img.onload = function() { analyseContrast(img); };
+    img.src = url;
+    bg.insertBefore(img, bg.firstChild);
+  });
+}
+
+function analyseContrast(img) {
+  try {
+    var W = 40; var H = 40;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0, W, H);
+    var pixels = ctx.getImageData(0, 0, W, Math.floor(H / 3)).data;
+    var sum = 0; var n = 0;
+    for (var i = 0; i < pixels.length; i += 4) {
+      sum += 0.2126 * pixels[i] + 0.7152 * pixels[i+1] + 0.0722 * pixels[i+2];
+      n++;
+    }
+    var lum = n > 0 ? sum / n : 0;
+    var shell = document.getElementById('shell');
+    if (lum > 200) shell.classList.add('theme-light');
+    else shell.classList.remove('theme-light');
+  } catch (e) {}
+}
+
+// ─── IMAGE_CONTENT ────────────────────────────
+
+function renderImageContent(q, area) {
+  setContinue(true);
+  if (!q.text) return;
+  var el = document.createElement('div');
+  el.className = 'group img-text';
+  el.textContent = q.text;
+  area.appendChild(el);
+}
+
+// ─── MULTICHOICE / MULTISELECT ────────────────
+
+function renderChoiceContent(q, area) {
+  var qId = q.id || q._id;
+
+  if (!state.selections[qId]) {
+    state.selections[qId] = {};
+    state.startTimes[qId] = Date.now();
+  }
+
+  var sel         = state.selections[qId];
+  var displayType = q.optionDisplayType || 'DEFAULT';
+  var isMulti     = q.type === 'MULTISELECT';
+  var isGrid      = displayType === 'GRID_ICON_SELECT';
+  var opts        = Array.isArray(q.options) ? q.options : [];
+
+  var group = document.createElement('div');
+  group.className = 'group';
+
+  if (q.text) {
+    var lbl = document.createElement('div');
+    lbl.className = 'face-label';
+    lbl.textContent = q.text;
+    group.appendChild(lbl);
+  }
+
+  var container = isGrid ? document.createElement('div') : group;
+  if (isGrid) container.className = 'opts-grid';
+
+  opts.forEach(function(opt) {
+    if (!opt || (!opt.id && !opt._id)) return;
+    var optId  = opt.id || opt._id;
+    var label  = opt.label || opt.text || '';
+    var btn    = document.createElement('button');
+    btn.className = 'opt' + (sel[optId] ? ' sel' : '');
+
+    if (isGrid) {
+      btn.className += ' grid-cell';
+      appendOptImage(btn, opt.image, label);
+      appendSpan(btn, 'opt-lbl', label);
+
+    } else if (displayType === 'ICON_SELECT') {
+      btn.className += ' icon-row';
+      appendOptImage(btn, opt.image, label);
+      appendSpan(btn, 'opt-lbl', label);
+      if (isMulti) appendChk(btn);
+
+    } else {
+      if (isMulti) appendChk(btn);
+      appendSpan(btn, '', label);
+    }
+
+    btn.addEventListener('click', function() {
+      if (state.submitting) return;
+
+      if (isMulti) {
+        if (sel[optId]) {
+          delete sel[optId];
+          btn.classList.remove('sel');
+        } else {
+          sel[optId] = true;
+          btn.classList.add('sel');
+        }
+      } else {
+        container.querySelectorAll('.opt').forEach(function(b) { b.classList.remove('sel'); });
+        state.selections[q.id || q._id] = {};
+        sel = state.selections[q.id || q._id];
+        sel[optId] = true;
+        btn.classList.add('sel');
+      }
+
+      setContinue(Object.keys(state.selections[q.id || q._id]).length > 0);
+    });
+
+    container.appendChild(btn);
+  });
+
+  if (isGrid) group.appendChild(container);
+  area.appendChild(group);
+
+  setContinue(Object.keys(sel).length > 0);
+}(btn, imageId, alt) {
+  if (!imageId) return;
+  var img = document.createElement('img');
+  img.className = 'opt-img';
+  img.alt = alt;
+  fetchMedia(imageId, function(url) { if (url && img.isConnected) img.src = url; });
+  btn.appendChild(img);
+}
+
+function appendSpan(btn, cls, text) {
+  var s = document.createElement('span');
+  if (cls) s.className = cls;
+  s.textContent = text;
+  btn.appendChild(s);
+}
+
+function appendChk(btn) {
+  var d = document.createElement('div');
+  d.className = 'chk';
+  btn.appendChild(d);
+}
+
+// ═══════════════════════════════════════════════
+//  SUBMIT & ADVANCE
+// ═══════════════════════════════════════════════
+
+document.getElementById('continue-btn').addEventListener('click', function() {
+  if (state.submitting) return;
+
+  var q = state.questions[state.currentIndex];
+  if (!q) return;
+
+  state.submitting = true;
+  setContinue(false);
+
+  // IMAGE_CONTENT — no answer, just advance the container's linear index
+  if (q.type === 'IMAGE_CONTENT') {
+    postToApp('NEXT_QUESTION');
+    setTimeout(advance, 0);
+    return;
+  }
+
+  var qId  = q.id || q._id;
+  var ids  = Object.keys(state.selections[qId] || {});
+  if (ids.length === 0) {
+    state.submitting = false;
+    setContinue(false);
+    return;
+  }
+
+  var duration = Math.round((Date.now() - (state.startTimes[qId] || Date.now())) / 1000);
+
+  // QUESTION_RESPONSE: standard { key, data } envelope per the bridge spec.
+  var data;
+  if (q.type === 'MULTICHOICE') {
+    data = {
+      question:               qId,
+      option:                 { _id: ids[0] },
+      duration:               duration,
+      parentActivityResponse: state.activityResponseId || undefined
+    };
+  } else {
+    data = {
+      question:               qId,
+      options:                ids.map(function(id) { return { _id: id }; }),
+      duration:               duration,
+      parentActivityResponse: state.activityResponseId || undefined
+    };
+  }
+
+  postToApp('QUESTION_RESPONSE', data);
+  alert('SENT QUESTION_RESPONSE\n' + JSON.stringify(data));
+
+  // Advance when container confirms via QUESTION_RESPONSE callback.
+  // Safety fallback: advance after 4s if callback never arrives.
+  state.submitTimer = setTimeout(function() {
+    if (state.submitting) {
+      alert('SAFETY TIMEOUT — no QUESTION_RESPONSE callback received, advancing anyway');
+      state.submitting = false;
+      advance();
+    }
+  }, 4000);
+});
+
+function advance() {
+  state.submitting = false;
+  if (state.currentIndex < state.questions.length - 1) {
+    state.currentIndex++;
+    renderProgress();
+    renderQuestion(state.currentIndex);
+  } else {
+    postToApp('QUIT', { completeState: 'COMPLETE' });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════
+
+function setContinue(enabled) {
+  var btn = document.getElementById('continue-btn');
+  if (enabled) btn.classList.add('ready');
+  else btn.classList.remove('ready');
+}
+
+function setFeedback(text) {
+  var el = document.getElementById('feedback');
+  el.textContent = text || '';
+  el.className = '';
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading');
+  if (el) el.style.display = 'none';
+}
+
+function showError(msg) {
+  hideLoading();
+  document.getElementById('error-msg').textContent = msg || 'Something went wrong.';
+  document.getElementById('error-screen').style.display = 'flex';
+}
+
+document.getElementById('error-retry').addEventListener('click', function() {
+  document.getElementById('error-screen').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  state.gotQuestions = false;
+  state.gotActivity  = false;
+  state.gotConfig    = false;
+  state.ready        = false;
+  state.questions    = null;
+  state.currentIndex = 0;
+  postToApp('READY_DYNAMIC_MEDIA');
+});
+
+document.getElementById('error-close').addEventListener('click', function() {
+  postToApp('QUIT', { completeState: 'INCOMPLETE' });
+});
+
+// ═══════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════
+postToApp('READY_DYNAMIC_MEDIA');
+</script>
+</body>
+</html>
