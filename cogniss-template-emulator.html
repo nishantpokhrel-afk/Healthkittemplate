@@ -347,6 +347,12 @@
   .asset-actions{display:flex; gap:5px; flex-wrap:wrap;}
   .asset-actions button{padding:3px 7px; font-size:10px;}
   .asset-actions button.copied{background:var(--green); color:#0a2b0f; border-color:var(--green);}
+
+  .placeholder-preview-row{display:flex; gap:10px; align-items:center; margin-bottom:10px;}
+  #placeholderPreviewImg{
+    width:84px; height:84px; object-fit:cover; border-radius:8px; background:#0a0e13; border:1px solid var(--border); flex-shrink:0;
+  }
+  .placeholder-preview-meta{flex:1; min-width:0;}
 </style>
 </head>
 <body>
@@ -390,70 +396,39 @@
 <main>
   <div class="sidebar">
     <div class="tabs">
-      <div class="tab active" data-tab="session">Session</div>
-      <div class="tab" data-tab="questions">Questions</div>
-      <div class="tab" data-tab="health">Health</div>
-      <div class="tab" data-tab="tables">Tables</div>
+      <div class="tab active" data-tab="setup">Setup</div>
+      <div class="tab" data-tab="activity">Activity Config</div>
       <div class="tab" data-tab="assets">Assets</div>
-      <div class="tab" data-tab="theme">Theme</div>
       <div class="tab" data-tab="manual">Send</div>
     </div>
     <div class="tab-content">
 
-      <!-- SESSION TAB -->
-      <div class="tab-panel active" id="panel-session">
-        <div class="hint">These become the <b>USER</b>, <b>ACTIVITY</b>, and <b>CONFIG</b> init messages the container sends on load. Edit the JSON and hit Apply, then Reload the template.</div>
+      <!-- SETUP TAB -->
+      <div class="tab-panel active" id="panel-setup">
+        <div class="hint">One box for everything else the emulator needs: <b>USER</b>, activity engine settings, <b>TEMPLATE_VARIATION</b>, <b>QUESTIONS</b>, <b>Tables</b>, <b>Theme</b>, and Apple Health mock data. Paste a single JSON blob and hit Apply — see the <b>Setup JSON schema</b> hint below, or use the companion Claude skill to generate one automatically from your template's source code (it reads the template and produces a blob matching exactly what it expects).</div>
+        <textarea class="json-edit tall" id="edit-setup" placeholder="Paste your combined Setup JSON here…" style="height:340px;"></textarea>
+        <div class="apply-row">
+          <button class="primary" id="applySetupBtn">Apply Setup</button>
+          <button id="loadExampleSetupBtn">Load example</button>
+        </div>
+        <div class="ok-msg" id="ok-setup"></div>
+        <div class="err-msg" id="err-setup"></div>
 
-        <div class="field-group">
-          <h3>USER <span class="row-btns"><button data-regen="user">Regenerate</button></span></h3>
-          <textarea class="json-edit" id="edit-user"></textarea>
-          <div class="apply-row"><button class="primary" data-apply="user">Apply</button></div>
-          <div class="err-msg" id="err-user"></div>
+        <div class="field-group" style="margin-top:18px;">
+          <h3>Setup JSON schema <span class="row-btns"><button data-action="toggle-schema">Show/hide</button></span></h3>
+          <div class="hint" id="setupSchemaHint" style="display:none; white-space:pre-wrap; font-family:var(--mono); font-size:10.5px; line-height:1.6; background:#0a0e13; border-radius:6px; padding:10px;">{
+  "user": { "displayName": "...", "xp": 0, "coins": 0, ... },
+  "activity": { "engine": "DEFAULT", "randomizeQuestions": false, "questionLimit": null, "textToSpeech": false },
+  "templateVariation": { },
+  "questions": [ { "text": "...", "type": "MULTICHOICE", "options": [ { "text":"...", "correct":true, "score":10 } ], "duration": 20 } ],
+  "tables": [ { "id": "table_x", "name": "Reward Tiers", "columns": [ { "displayName":"tierName", "valueType":"string" } ], "rows": [ { "tierName":"Bronze" } ] } ],
+  "theme": { "colors": { "primary":"#5fb3a3" }, "rounded":"MEDIUM" },
+  "health": { "days": 14, "stepsRange": [3000,13000], "rhrRange": [54,72], "weightStart": 76, "workoutsCount": 6, "noData": false }
+}
+All keys optional — only what you include gets applied; everything else keeps its current value. Option objects only need "text"/"correct"/"score" — IDs are generated for you.</div>
         </div>
 
         <div class="field-group">
-          <h3>ACTIVITY <span class="row-btns"><button data-regen="activity">Regenerate</button></span></h3>
-          <textarea class="json-edit" id="edit-activity"></textarea>
-          <div class="apply-row"><button class="primary" data-apply="activity">Apply</button></div>
-          <div class="err-msg" id="err-activity"></div>
-        </div>
-
-        <div class="field-group">
-          <h3>ACTIVITY CUSTOM CONFIG JSON <span class="row-btns"><button data-regen="config">Clear</button></span></h3>
-          <div class="hint" style="margin-top:-4px;">This is the exact field called <b>Custom config JSON</b> on the Activity in the Cogniss Creator/Admin panel (<span class="kbd">activity.customConfig</span>) — paste whatever you'd enter there and hit Apply. You can paste either just the config object (<span class="kbd">{ "step_goal": 8000, ... }</span>) or a full Activity JSON blob with a <span class="kbd">customConfig</span> key inside it — the emulator detects which one you gave it and pulls out the right thing.</div>
-          <textarea class="json-edit" id="edit-config" placeholder='{ "step_goal": 8000, "apiEndpoint": "https://..." }'></textarea>
-          <div class="apply-row"><button class="primary" data-apply="config">Apply</button></div>
-          <div class="ok-msg" id="ok-config"></div>
-          <div class="err-msg" id="err-config"></div>
-        </div>
-
-        <div class="field-group">
-          <h3>TEMPLATE_VARIATION</h3>
-          <textarea class="json-edit" id="edit-variation" style="height:80px;"></textarea>
-          <div class="apply-row"><button class="primary" data-apply="variation">Apply</button></div>
-          <div class="err-msg" id="err-variation"></div>
-        </div>
-
-        <div class="field-group">
-          <h3>ACTIVITY_RESPONSE (read-only view)</h3>
-          <div class="hint" style="margin-top:-4px;">Updated automatically via REST_REQUEST (put) and on QUIT/EXIT.</div>
-          <textarea class="json-edit" id="view-ar" readonly style="height:110px; opacity:.75;"></textarea>
-        </div>
-      </div>
-
-      <!-- QUESTIONS TAB -->
-      <div class="tab-panel" id="panel-questions">
-        <div class="hint">Sent as <b>QUESTIONS</b> (array) and <b>QUESTION</b> (first / linear-flow current) init messages. Pick a preset or edit the JSON directly. To use a real image or audio file for a question, upload it in the <b>Assets</b> tab and paste the resulting File ID into that question's <span class="kbd">image</span>/<span class="kbd">audio</span> field.</div>
-        <div class="chip-row">
-          <div class="chip" data-preset="quiz">Quiz (MULTICHOICE)</div>
-          <div class="chip" data-preset="survey">Survey (mixed)</div>
-          <div class="chip" data-preset="content">Display-only content</div>
-          <div class="chip" data-preset="full">One of every type</div>
-        </div>
-        <textarea class="json-edit tall" id="edit-questions"></textarea>
-        <div class="apply-row"><button class="primary" data-apply="questions">Apply</button></div>
-        <div class="err-msg" id="err-questions"></div>
-        <div class="field-group" style="margin-top:14px;">
           <h3>Question flow state</h3>
           <div class="inline-row"><label>Linear index</label><span id="linearIndexView" style="color:var(--text-dim);">0</span></div>
           <div class="inline-row"><label>Responses saved</label><span id="responsesCountView" style="color:var(--text-dim);">0</span></div>
@@ -461,49 +436,74 @@
         </div>
       </div>
 
-      <!-- HEALTH TAB -->
-      <div class="tab-panel" id="panel-health">
-        <div class="hint">Answers <b>REST_REQUEST</b> calls for model <b>AppleHealthRecord</b>. Data regenerates each time you open a New Session, or on demand below.</div>
-        <div class="range-row"><label style="min-width:120px; color:var(--text-dim); font-size:11.5px;">Days of history</label><input type="range" id="healthDays" min="1" max="60" value="14"><span class="val" id="healthDaysVal">14</span></div>
-        <div class="inline-row"><label>Steps/day range</label><input type="text" id="healthStepsRange" value="3000-13000"></div>
-        <div class="inline-row"><label>Resting HR range</label><input type="text" id="healthRhrRange" value="54-72"></div>
-        <div class="inline-row"><label>Weight start (kg)</label><input type="text" id="healthWeightStart" value="76"></div>
-        <div class="inline-row"><label>Workouts count</label><input type="text" id="healthWorkoutsCount" value="6"></div>
-        <label style="display:flex; align-items:center; gap:8px; margin:10px 0; color:var(--text-dim); font-size:11.5px;">
-          <input type="checkbox" id="healthNoDataMode"> Simulate "no HealthKit data" (empty results)
-        </label>
-        <button class="primary" style="width:100%;" id="regenHealthBtn">Regenerate health data</button>
-        <div class="field-group" style="margin-top:14px;">
-          <h3>Preview: last STEP_COUNT list</h3>
-          <textarea class="json-edit" id="view-health" readonly style="opacity:.75;"></textarea>
-        </div>
-      </div>
+      <!-- ACTIVITY CONFIG TAB -->
+      <div class="tab-panel" id="panel-activity">
+        <div class="hint">This is the exact field called <b>Custom config JSON</b> on the Activity in the Cogniss Creator/Admin panel (<span class="kbd">activity.customConfig</span>) — paste whatever you'd enter there and hit Apply. You can paste either just the config object (<span class="kbd">{ "step_goal": 8000, ... }</span>) or a full Activity JSON blob with a <span class="kbd">customConfig</span> key inside it — the emulator detects which one you gave it and pulls out the right thing.</div>
+        <textarea class="json-edit tall" id="edit-config" placeholder='{ "step_goal": 8000, "apiEndpoint": "https://..." }'></textarea>
+        <div class="apply-row"><button class="primary" data-apply="config">Apply</button></div>
+        <div class="ok-msg" id="ok-config"></div>
+        <div class="err-msg" id="err-config"></div>
 
-      <!-- TABLES TAB -->
-      <div class="tab-panel" id="panel-tables">
-        <div class="hint">Answers <b>REST_REQUEST</b> calls for models <b>Table</b> and <b>TableRow</b>. Edit freely — <span class="kbd">table</span> is required on every TableRow list call, matching production behaviour. For <span class="kbd">objectid</span> columns pointing at images, upload the image in the <b>Assets</b> tab and paste its File ID as the column value.</div>
-        <textarea class="json-edit tall" id="edit-tables"></textarea>
-        <div class="apply-row"><button class="primary" data-apply="tables">Apply</button></div>
-        <div class="err-msg" id="err-tables"></div>
+        <div class="field-group" style="margin-top:16px;">
+          <h3>ACTIVITY_RESPONSE (read-only view)</h3>
+          <div class="hint" style="margin-top:-4px;">Updated automatically via REST_REQUEST (put) and on QUIT/EXIT.</div>
+          <textarea class="json-edit" id="view-ar" readonly style="height:150px; opacity:.75;"></textarea>
+        </div>
       </div>
 
       <!-- ASSETS TAB -->
       <div class="tab-panel" id="panel-assets">
-        <div class="hint">Upload real images, audio, or video for icons, backgrounds, question media, or Table image columns. Each upload becomes a mock <b>File</b> record — when a template calls <span class="kbd">REST_REQUEST('get','File', id)</span> with a matching ID, the emulator returns your uploaded asset's data instead of a placeholder. Copy the ID and paste it wherever a template expects a File ID (a question's <span class="kbd">image</span>/<span class="kbd">audio</span> field, a Table's <span class="kbd">objectid</span> column, etc.) — or use the quick-assign buttons for common theme slots.</div>
+        <div class="hint">Images resolve automatically — any File ID a template requests that you haven't uploaded yourself gets a real random photo from <b>Picsum Photos</b> (a free, no-key-required internet image library), sized sensibly if the ID mentions "icon", "background"/"banner"/"header", so nothing ever renders as an empty box. Upload here only when you need a <i>specific</i> image, audio, or video file. Each upload becomes a mock <b>File</b> record — when a template calls <span class="kbd">REST_REQUEST('get','File', id)</span> with a matching ID, the emulator returns your uploaded asset instead. Copy the ID and paste it wherever a template expects a File ID (a question's <span class="kbd">image</span>/<span class="kbd">audio</span> field, a Table's <span class="kbd">objectid</span> column, a theme background, etc.) — or use the quick-assign buttons for common theme slots.</div>
+
+        <div class="field-group">
+          <h3>Placeholder images <span class="row-btns"><button id="refreshPreviewBtn">Refresh preview</button></span></h3>
+          <div class="hint" style="margin-top:-4px;">Controls what any <i>un-uploaded</i> File ID resolves to. Doesn't affect assets you've uploaded above.</div>
+          <div class="placeholder-preview-row">
+            <img id="placeholderPreviewImg" alt="placeholder preview">
+            <div class="placeholder-preview-meta">
+              <div id="placeholderPreviewLabel" class="hint" style="margin:0;">—</div>
+              <div id="placeholderPreviewUrl" class="asset-id" style="margin-top:6px;">—</div>
+            </div>
+          </div>
+          <div class="inline-row">
+            <label>Source</label>
+            <select id="placeholderSource">
+              <option value="picsum">Picsum — real stock photos</option>
+              <option value="svg">Generated SVG blocks</option>
+            </select>
+          </div>
+          <div class="inline-row" id="placeholderModeRow">
+            <label>Consistency</label>
+            <select id="placeholderMode">
+              <option value="seeded">Stable per File ID (same photo every time)</option>
+              <option value="random">Random every request</option>
+            </select>
+          </div>
+          <div class="inline-row">
+            <label>Sizing</label>
+            <select id="placeholderSizing">
+              <option value="auto">Auto — guess from the File ID</option>
+              <option value="fixed">Fixed size</option>
+            </select>
+          </div>
+          <div class="inline-row" id="placeholderSizeRow" style="display:none;">
+            <label>Width × Height</label>
+            <input type="number" id="placeholderWidth" min="16" max="2000" style="max-width:80px;">
+            <span style="color:var(--text-dim);">×</span>
+            <input type="number" id="placeholderHeight" min="16" max="2000" style="max-width:80px;">
+          </div>
+          <label style="display:flex; align-items:center; gap:8px; margin:6px 0 0; color:var(--text-dim); font-size:11.5px;">
+            <input type="checkbox" id="placeholderGrayscale"> Grayscale
+          </label>
+          <div class="hint" id="placeholderAutoHint" style="margin-top:8px;">Auto sizing recognizes: <span class="kbd">icon</span> → 128×128 square, <span class="kbd">avatar</span>/<span class="kbd">profile</span> → 200×200 square, <span class="kbd">thumbnail</span>/<span class="kbd">thumb</span> → 320×200, <span class="kbd">background</span>/<span class="kbd">banner</span>/<span class="kbd">header</span>/<span class="kbd">hero</span>/<span class="kbd">cover</span> → 1200×400 wide, anything else → 640×400.</div>
+        </div>
+
         <label class="file-label" style="width:100%; justify-content:center; margin-bottom:12px;">
           Upload image / audio / video
           <input type="file" id="assetInput" accept="image/*,audio/*,video/*" multiple>
         </label>
-        <div id="assetEmpty" class="hint" style="text-align:center; padding:20px 0;">No assets uploaded yet.</div>
+        <div id="assetEmpty" class="hint" style="text-align:center; padding:20px 0;">No assets uploaded yet — unmatched File IDs already resolve to real internet images automatically.</div>
         <div id="assetList"></div>
-      </div>
-
-      <!-- THEME TAB -->
-      <div class="tab-panel" id="panel-theme">
-        <div class="hint">Answers <b>REST_REQUEST</b> for models <b>App</b> (App-level theme) and <b>Settings</b> (platform fallback theme) — the pattern described in <span class="kbd">references/theme.md</span>. Background/header <span class="kbd">image</span> fields take a File ID — upload one in the <b>Assets</b> tab and either paste its ID below or use its quick-assign button.</div>
-        <textarea class="json-edit tall" id="edit-theme"></textarea>
-        <div class="apply-row"><button class="primary" data-apply="theme">Apply</button></div>
-        <div class="err-msg" id="err-theme"></div>
       </div>
 
       <!-- MANUAL TAB -->
@@ -995,7 +995,8 @@
     readyTimeoutId: null,
     lastRestFingerprints: [],
     notes: [],
-    picking: false
+    picking: false,
+    placeholderConfig: { source:'picsum', mode:'seeded', sizing:'auto', width:640, height:400, grayscale:false }
   };
 
   var STORAGE_KEY = 'cogniss_emulator_config_v1';
@@ -1039,7 +1040,8 @@
       var payload = {
         user: S.user, activity: S.activity, config: S.config, questions: S.questions,
         theme: S.theme, tables: S.tables, healthParams: S.healthParams, templateVariation: S.templateVariation,
-        platform: S.platform, frame: S.frame, latency: S.latency, failRate: S.failRate
+        platform: S.platform, frame: S.frame, latency: S.latency, failRate: S.failRate,
+        placeholderConfig: S.placeholderConfig
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     }catch(e){}
@@ -1076,6 +1078,7 @@
     S.readySent = false;
     S.dataSentToTemplate = false;
     S.fileCache = {};
+    if(saved && saved.placeholderConfig) S.placeholderConfig = Object.assign({}, S.placeholderConfig, saved.placeholderConfig);
     if(saved){
       S.platform = saved.platform || S.platform;
       S.frame = saved.frame || S.frame;
@@ -1563,6 +1566,37 @@
     return { correct:false, score:0, duration: payload.duration||0 };
   }
 
+  function inferDimensionsFromId(fileId){
+    var id = String(fileId).toLowerCase();
+    if(/icon/.test(id)) return {width:128, height:128};
+    if(/(avatar|profile|face)/.test(id)) return {width:200, height:200};
+    if(/(thumbnail|thumb)/.test(id)) return {width:320, height:200};
+    if(/(background|banner|header|hero|cover)/.test(id)) return {width:1200, height:400};
+    return {width:640, height:400};
+  }
+
+  function placeholderDimensions(fileId){
+    var cfg = S.placeholderConfig;
+    if(cfg.sizing === 'fixed') return { width: cfg.width||640, height: cfg.height||400 };
+    return inferDimensionsFromId(fileId);
+  }
+
+  function placeholderImageUrl(fileId, dims){
+    var cfg = S.placeholderConfig;
+    if(cfg.source === 'svg'){
+      var label = String(fileId).replace(/^file_/,'').replace(/_/g,' ') || 'mock file';
+      return svgPlaceholder(label.slice(0,24), dims.width, dims.height, pick(['#5fb3a3','#e8a34c','#5b9dd9','#6bbf7a']));
+    }
+    var url;
+    if(cfg.mode === 'random'){
+      url = 'https://picsum.photos/' + dims.width + '/' + dims.height + '?_r=' + Math.random().toString(36).slice(2);
+    } else {
+      url = 'https://picsum.photos/seed/' + encodeURIComponent(fileId) + '/' + dims.width + '/' + dims.height;
+    }
+    if(cfg.grayscale) url += (url.indexOf('?')===-1 ? '?' : '&') + 'grayscale';
+    return url;
+  }
+
   function genFileRecord(fileId){
     var asset = S.assets.find(function(a){ return a.id === fileId; });
     if(asset){
@@ -1571,17 +1605,18 @@
         size: asset.size, width: asset.width||null, height: asset.height||null, duration: asset.duration||null
       };
     }
-    if(S.fileCache[fileId]) return S.fileCache[fileId];
-    var label = String(fileId).replace(/^file_/,'').replace(/_/g,' ') || 'mock file';
+    var isRandomMode = S.placeholderConfig.mode === 'random' && S.placeholderConfig.source === 'picsum';
+    if(!isRandomMode && S.fileCache[fileId]) return S.fileCache[fileId];
+    var dims = placeholderDimensions(fileId);
     var rec = {
       id: fileId,
-      url: svgPlaceholder(label.slice(0,24), 640, 400, pick(['#5fb3a3','#e8a34c','#5b9dd9','#6bbf7a'])),
-      type: 'image/svg+xml',
-      filename: fileId + '.svg',
+      url: placeholderImageUrl(fileId, dims),
+      type: S.placeholderConfig.source === 'svg' ? 'image/svg+xml' : 'image/jpeg',
+      filename: fileId + (S.placeholderConfig.source === 'svg' ? '.svg' : '.jpg'),
       size: randInt(20000,400000),
-      width: 640, height: 400, duration: null
+      width: dims.width, height: dims.height, duration: null
     };
-    S.fileCache[fileId] = rec;
+    if(!isRandomMode) S.fileCache[fileId] = rec;
     return rec;
   }
 
@@ -2004,28 +2039,35 @@
     document.getElementById('responsesCountView').textContent = S.questionResponses.length;
   }
   function refreshUserSummary(){ /* placeholder for future user-summary UI */ }
-  function refreshHealthPreview(){
-    document.getElementById('view-health').value = pretty((S.health.STEP_COUNT||[]).slice(0,5));
+
+  // Builds the combined object shown in (and read back from) the Setup box.
+  // Deliberately excludes activity.customConfig — that stays on its own in the Activity Config tab.
+  function buildSetupBlob(){
+    return {
+      user: S.user,
+      activity: {
+        engine: S.activity.engine,
+        randomizeQuestions: S.activity.randomizeQuestions,
+        questionLimit: S.activity.questionLimit,
+        textToSpeech: S.activity.textToSpeech
+      },
+      templateVariation: S.templateVariation,
+      questions: S.questions,
+      tables: S.tables,
+      theme: S.theme,
+      health: S.healthParams
+    };
+  }
+
+  function refreshSetupEditor(){
+    document.getElementById('edit-setup').value = pretty(buildSetupBlob());
   }
 
   function refreshAllEditors(){
-    document.getElementById('edit-user').value = pretty(S.user);
-    document.getElementById('edit-activity').value = pretty(S.activity);
     document.getElementById('edit-config').value = pretty(S.config);
-    document.getElementById('edit-variation').value = pretty(S.templateVariation);
-    document.getElementById('edit-questions').value = pretty(S.questions);
-    document.getElementById('edit-tables').value = pretty(S.tables);
-    document.getElementById('edit-theme').value = pretty(S.theme);
+    refreshSetupEditor();
     refreshArView();
     refreshQuestionFlowView();
-    refreshHealthPreview();
-    document.getElementById('healthDays').value = S.healthParams.days;
-    document.getElementById('healthDaysVal').textContent = S.healthParams.days;
-    document.getElementById('healthStepsRange').value = S.healthParams.stepsRange.join('-');
-    document.getElementById('healthRhrRange').value = S.healthParams.rhrRange.join('-');
-    document.getElementById('healthWeightStart').value = S.healthParams.weightStart;
-    document.getElementById('healthWorkoutsCount').value = S.healthParams.workoutsCount;
-    document.getElementById('healthNoDataMode').checked = !!S.healthParams.noData;
     document.getElementById('platformSelect').value = S.platform;
     document.getElementById('frameSelect').value = S.frame;
     document.getElementById('latencyRange').value = S.latency;
@@ -2033,6 +2075,8 @@
     document.getElementById('failRate').value = S.failRate;
     platformBadge.textContent = S.platform;
     updateFrameClass();
+    syncPlaceholderControlsFromState();
+    refreshPlaceholderPreview();
   }
 
   function updateFrameClass(){
@@ -2049,6 +2093,115 @@
       tab.classList.add('active');
       document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     });
+  });
+
+  // Setup tab — combined JSON blob covering USER, activity engine settings, TEMPLATE_VARIATION,
+  // QUESTIONS, Tables, Theme, and Apple Health mock params.
+  function normalizeOptionForSetup(o){
+    o = o || {};
+    return {
+      _id: o._id || uid('opt'),
+      text: o.text || '',
+      label: o.label || o.text || '',
+      correct: !!o.correct,
+      score: o.score || 0,
+      image: o.image || null,
+      audio: o.audio || null
+    };
+  }
+  function normalizeQuestionForSetup(q){
+    q = q || {};
+    return {
+      text: q.text || '',
+      type: q.type || 'MULTICHOICE',
+      options: (q.options || []).map(normalizeOptionForSetup),
+      duration: q.duration !== undefined ? q.duration : 20,
+      optionDisplayType: q.optionDisplayType || 'DEFAULT',
+      textDisplayType: q.textDisplayType || 'DEFAULT',
+      image: q.image || null,
+      audio: q.audio || null,
+      video: q.video || null
+    };
+  }
+  function normalizeTableForSetup(t, idx){
+    t = t || {};
+    return {
+      id: t.id || uid('table'),
+      name: t.name || ('Table ' + (idx+1)),
+      description: t.description || '',
+      app: S.appId,
+      columns: t.columns || [],
+      archived: false,
+      rows: t.rows || []
+    };
+  }
+  function mergeThemeForSetup(target, patch){
+    Object.keys(patch).forEach(function(k){
+      if(patch[k] && typeof patch[k] === 'object' && !Array.isArray(patch[k]) && target[k] && typeof target[k] === 'object'){
+        Object.assign(target[k], patch[k]);
+      } else {
+        target[k] = patch[k];
+      }
+    });
+  }
+
+  document.getElementById('applySetupBtn').addEventListener('click', function(){
+    var ta = document.getElementById('edit-setup');
+    var okEl = document.getElementById('ok-setup');
+    var errEl = document.getElementById('err-setup');
+    try{
+      var parsed = JSON.parse(ta.value);
+      errEl.style.display = 'none';
+      if(parsed.user) Object.assign(S.user, parsed.user);
+      if(parsed.activity) Object.assign(S.activity, parsed.activity);
+      if(parsed.templateVariation) S.templateVariation = parsed.templateVariation;
+      if(parsed.questions){
+        S.questions = parsed.questions.map(normalizeQuestionForSetup);
+        S.linearIndex = 0;
+        S.questionResponses = [];
+      }
+      if(parsed.tables) S.tables = parsed.tables.map(normalizeTableForSetup);
+      if(parsed.theme) mergeThemeForSetup(S.theme, parsed.theme);
+      if(parsed.health){
+        Object.assign(S.healthParams, parsed.health);
+        S.health = genHealthDataset(S.healthParams);
+      }
+      saveConfigToStorage();
+      refreshAllEditors();
+      okEl.textContent = 'Setup applied. Reload the template to send the updated data.';
+      okEl.style.display = 'block';
+      setTimeout(function(){ okEl.style.display = 'none'; }, 4000);
+    }catch(e){
+      okEl.style.display = 'none';
+      errEl.textContent = 'Invalid JSON: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  });
+
+  document.getElementById('loadExampleSetupBtn').addEventListener('click', function(){
+    var example = {
+      user: { displayName: 'Jordan Rivera', xp: 1200, coins: 85 },
+      activity: { engine: 'DEFAULT', randomizeQuestions: false, questionLimit: null, textToSpeech: false },
+      templateVariation: {},
+      questions: [
+        { text: 'Which planet is known as the Red Planet?', type: 'MULTICHOICE', duration: 20,
+          options: [ { text: 'Venus' }, { text: 'Mars', correct: true, score: 10 }, { text: 'Jupiter' } ] }
+      ],
+      tables: [
+        { name: 'Reward Tiers',
+          columns: [ { displayName: 'tierName', valueType: 'string' }, { displayName: 'minPoints', valueType: 'number' } ],
+          rows: [ { tierName: 'Bronze', minPoints: 0 }, { tierName: 'Gold', minPoints: 1500 } ] }
+      ],
+      theme: { colors: { primary: '#5fb3a3' }, rounded: 'MEDIUM' },
+      health: { days: 14, stepsRange: [3000,13000], rhrRange: [54,72], weightStart: 76, workoutsCount: 6, noData: false }
+    };
+    document.getElementById('edit-setup').value = pretty(example);
+    toast('Example loaded — review it, then click Apply Setup.');
+  });
+
+  document.querySelector('[data-action="toggle-schema"]').addEventListener('click', function(){
+    var el = document.getElementById('setupSchemaHint');
+    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
   });
 
   // File upload
@@ -2100,37 +2253,28 @@
     saveConfigToStorage();
   });
 
-  // Generic JSON apply/regen wiring
+  // Generic JSON apply wiring — only "config" (Activity Custom Config JSON) is live in this UI.
   function showErr(id, msg){ var e=document.getElementById('err-'+id); e.textContent=msg; e.style.display = msg?'block':'none'; }
 
   document.querySelectorAll('[data-apply]').forEach(function(btn){
     btn.addEventListener('click', function(){
       var key = btn.dataset.apply;
-      var map = { user:'edit-user', activity:'edit-activity', config:'edit-config', variation:'edit-variation', questions:'edit-questions', tables:'edit-tables', theme:'edit-theme' };
-      var ta = document.getElementById(map[key]);
+      if(key !== 'config') return;
+      var ta = document.getElementById('edit-config');
       try{
         var parsed = JSON.parse(ta.value);
         showErr(key, '');
-        if(key==='user') S.user = parsed;
-        if(key==='activity'){ S.activity = parsed; S.config = parsed.customConfig || S.config; }
-        if(key==='config'){
-          var okEl = document.getElementById('ok-config');
-          var extracted = parsed;
-          var detectedFullActivity = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-            && parsed.customConfig && typeof parsed.customConfig === 'object' && !Array.isArray(parsed.customConfig);
-          if(detectedFullActivity){
-            extracted = parsed.customConfig;
-            ta.value = pretty(extracted);
-            if(okEl){ okEl.textContent = 'Detected a full Activity JSON blob — pulled out customConfig automatically.'; okEl.style.display='block'; setTimeout(function(){okEl.style.display='none';}, 4000); }
-          } else if(okEl){ okEl.style.display='none'; }
-          S.config = extracted;
-          S.activity.customConfig = extracted;
-          document.getElementById('edit-activity').value = pretty(S.activity);
-        }
-        if(key==='variation') S.templateVariation = parsed;
-        if(key==='questions') S.questions = parsed;
-        if(key==='tables') S.tables = parsed;
-        if(key==='theme') S.theme = parsed;
+        var okEl = document.getElementById('ok-config');
+        var extracted = parsed;
+        var detectedFullActivity = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          && parsed.customConfig && typeof parsed.customConfig === 'object' && !Array.isArray(parsed.customConfig);
+        if(detectedFullActivity){
+          extracted = parsed.customConfig;
+          ta.value = pretty(extracted);
+          if(okEl){ okEl.textContent = 'Detected a full Activity JSON blob — pulled out customConfig automatically.'; okEl.style.display='block'; setTimeout(function(){okEl.style.display='none';}, 4000); }
+        } else if(okEl){ okEl.style.display='none'; }
+        S.config = extracted;
+        S.activity.customConfig = extracted;
         saveConfigToStorage();
         toast('Applied. Reload the template to send updated data.');
       }catch(e){
@@ -2139,51 +2283,8 @@
     });
   });
 
-  document.querySelectorAll('[data-regen]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var key = btn.dataset.regen;
-      if(key==='user'){ S.user = genUser(); document.getElementById('edit-user').value = pretty(S.user); }
-      if(key==='activity'){ S.activity = genActivity(S.config); document.getElementById('edit-activity').value = pretty(S.activity); }
-      if(key==='config'){ S.config = {}; S.activity.customConfig = {}; document.getElementById('edit-config').value = '{}'; document.getElementById('edit-activity').value = pretty(S.activity); }
-      saveConfigToStorage();
-    });
-  });
-
-  // Question presets
-  document.querySelectorAll('.chip[data-preset]').forEach(function(chip){
-    chip.addEventListener('click', function(){
-      var preset = chip.dataset.preset;
-      S.questions = withIds(QUESTION_PRESETS[preset]());
-      document.getElementById('edit-questions').value = pretty(S.questions);
-      saveConfigToStorage();
-      toast('Loaded "'+preset+'" preset. Hit Apply, then Reload.');
-    });
-  });
-
   document.querySelector('[data-action="rewind"]').addEventListener('click', function(){
     S.linearIndex = 0; refreshQuestionFlowView(); toast('Flow index reset to 0 (does not resend to a live template).');
-  });
-
-  // Health tab
-  document.getElementById('healthDays').addEventListener('input', function(){
-    document.getElementById('healthDaysVal').textContent = this.value;
-  });
-  document.getElementById('regenHealthBtn').addEventListener('click', function(){
-    var daysV = parseInt(document.getElementById('healthDays').value,10);
-    var stepsParts = document.getElementById('healthStepsRange').value.split('-').map(function(x){return parseInt(x,10);});
-    var rhrParts = document.getElementById('healthRhrRange').value.split('-').map(function(x){return parseInt(x,10);});
-    S.healthParams = {
-      days: daysV,
-      stepsRange: (stepsParts.length===2 && !isNaN(stepsParts[0])) ? stepsParts : [3000,13000],
-      rhrRange: (rhrParts.length===2 && !isNaN(rhrParts[0])) ? rhrParts : [54,72],
-      weightStart: parseFloat(document.getElementById('healthWeightStart').value)||76,
-      workoutsCount: parseInt(document.getElementById('healthWorkoutsCount').value,10)||6,
-      noData: document.getElementById('healthNoDataMode').checked
-    };
-    S.health = genHealthDataset(S.healthParams);
-    refreshHealthPreview();
-    saveConfigToStorage();
-    toast('Health data regenerated. Templates fetching AppleHealthRecord will see the new data on next REST_REQUEST.');
   });
 
   // Assets tab
@@ -2279,9 +2380,9 @@
     if(slot==='background'){ S.theme.generalBackground = S.theme.generalBackground || {}; S.theme.generalBackground.image = assetId; }
     if(slot==='featureHeader'){ S.theme.featureHeader = S.theme.featureHeader || {}; S.theme.featureHeader.image = assetId; }
     if(slot==='webFeatureHeader'){ S.theme.webFeatureHeader = S.theme.webFeatureHeader || {}; S.theme.webFeatureHeader.image = assetId; }
-    document.getElementById('edit-theme').value = pretty(S.theme);
+    refreshSetupEditor();
     saveConfigToStorage();
-    toast('Assigned to theme.' + (slot==='background'?'generalBackground':slot) + '.image — Apply the Theme tab to confirm, then Reload.');
+    toast('Assigned to theme.' + (slot==='background'?'generalBackground':slot) + '.image — visible in the Setup tab, already active (no need to re-apply).');
   }
 
   function removeAsset(assetId){
@@ -2374,6 +2475,57 @@
     if(e.target.files.length) addAssetFiles(e.target.files);
     e.target.value = '';
   });
+
+  // Placeholder image config
+  var phSourceEl = document.getElementById('placeholderSource');
+  var phModeRowEl = document.getElementById('placeholderModeRow');
+  var phSizingEl = document.getElementById('placeholderSizing');
+  var phSizeRowEl = document.getElementById('placeholderSizeRow');
+  var phWidthEl = document.getElementById('placeholderWidth');
+  var phHeightEl = document.getElementById('placeholderHeight');
+  var phGrayscaleEl = document.getElementById('placeholderGrayscale');
+  var phAutoHintEl = document.getElementById('placeholderAutoHint');
+
+  function syncPlaceholderControlsFromState(){
+    phSourceEl.value = S.placeholderConfig.source;
+    document.getElementById('placeholderMode').value = S.placeholderConfig.mode;
+    phSizingEl.value = S.placeholderConfig.sizing;
+    phWidthEl.value = S.placeholderConfig.width;
+    phHeightEl.value = S.placeholderConfig.height;
+    phGrayscaleEl.checked = S.placeholderConfig.grayscale;
+    phModeRowEl.style.display = S.placeholderConfig.source === 'picsum' ? 'flex' : 'none';
+    phSizeRowEl.style.display = S.placeholderConfig.sizing === 'fixed' ? 'flex' : 'none';
+    phAutoHintEl.style.display = S.placeholderConfig.sizing === 'auto' ? 'block' : 'none';
+  }
+
+  function refreshPlaceholderPreview(){
+    var sampleId = 'file_preview_sample';
+    var dims = placeholderDimensions(sampleId);
+    var url = placeholderImageUrl(sampleId, dims);
+    document.getElementById('placeholderPreviewImg').src = url;
+    document.getElementById('placeholderPreviewLabel').textContent = S.placeholderConfig.source === 'svg'
+      ? 'Generated SVG block'
+      : ('Picsum photo · ' + dims.width + '×' + dims.height + (S.placeholderConfig.mode==='random' ? ' · new each request' : ' · stable per File ID'));
+    document.getElementById('placeholderPreviewUrl').textContent = url;
+  }
+
+  function onPlaceholderConfigChange(){
+    S.placeholderConfig.source = phSourceEl.value;
+    S.placeholderConfig.mode = document.getElementById('placeholderMode').value;
+    S.placeholderConfig.sizing = phSizingEl.value;
+    S.placeholderConfig.width = parseInt(phWidthEl.value,10) || 640;
+    S.placeholderConfig.height = parseInt(phHeightEl.value,10) || 400;
+    S.placeholderConfig.grayscale = phGrayscaleEl.checked;
+    S.fileCache = {}; // settings changed — drop cached fallback images so new settings take effect
+    syncPlaceholderControlsFromState();
+    refreshPlaceholderPreview();
+    saveConfigToStorage();
+  }
+
+  [phSourceEl, document.getElementById('placeholderMode'), phSizingEl, phWidthEl, phHeightEl, phGrayscaleEl].forEach(function(el){
+    el.addEventListener('change', onPlaceholderConfigChange);
+  });
+  document.getElementById('refreshPreviewBtn').addEventListener('click', refreshPlaceholderPreview);
 
   /* ============================== NOTES FEATURE ============================== */
 
