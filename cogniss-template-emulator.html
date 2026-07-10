@@ -158,16 +158,47 @@
 
   /* RIGHT: DEBUG CONSOLE */
   .console{
-    width:420px; min-width:340px; background:var(--panel); border-left:1px solid var(--border);
-    display:flex; flex-direction:column; overflow:hidden;
+    width:460px; min-width:460px; background:var(--panel); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden; transition:width .18s, min-width .18s;
   }
+  .console.collapsed{ width:44px; min-width:44px; }
+  .console.collapsed .console-hdr .hdr-title,
+  .console.collapsed .console-hdr .actions > button:not(.minimize-btn),
+  .console.collapsed .console-filter,
+  .console.collapsed .console-severity-bar,
+  .console.collapsed .console-log{ display:none; }
+  .console.collapsed .console-hdr{ flex-direction:column; padding:10px 4px; gap:10px; }
+  .collapsed-strip{ display:none; flex-direction:column; align-items:center; gap:14px; padding:14px 0; flex:1; }
+  .console.collapsed .collapsed-strip{ display:flex; }
+  .collapsed-strip .vlabel{
+    writing-mode:vertical-rl; text-orientation:mixed; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-dim); font-weight:700;
+  }
+  .collapsed-strip .cbadge{
+    font-family:var(--mono); font-size:10px; font-weight:700; border-radius:20px; padding:3px 0; width:26px;
+    text-align:center;
+  }
+  .collapsed-strip .cbadge.err{background:rgba(224,102,95,.18); color:var(--red);}
+  .collapsed-strip .cbadge.warn{background:rgba(232,163,76,.18); color:var(--accent-2);}
   .console-hdr{
     display:flex; align-items:center; justify-content:space-between; padding:10px 12px;
     border-bottom:1px solid var(--border); flex-shrink:0;
   }
+  .console-hdr .hdr-title{display:flex; align-items:center; gap:8px;}
   .console-hdr h2{font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin:0; color:var(--text-dim);}
   .console-hdr .actions{display:flex; gap:6px;}
   .console-hdr button{padding:3px 8px; font-size:10.5px;}
+  .minimize-btn{font-weight:700;}
+  .console-severity-bar{display:flex; gap:6px; padding:8px 12px 0; flex-shrink:0;}
+  .sev-chip{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; cursor:pointer; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text-dim); display:flex; align-items:center; gap:5px;
+  }
+  .sev-chip.active{color:var(--text); border-color:var(--accent);}
+  .sev-chip .n{font-family:var(--mono);}
+  .sev-chip.err .n{color:var(--red);}
+  .sev-chip.warn .n{color:var(--accent-2);}
+  .sev-chip.info .n{color:var(--blue);}
   .console-filter{padding:8px 12px; border-bottom:1px solid var(--border); display:flex; gap:6px; flex-shrink:0;}
   .console-filter input{flex:1;}
   .console-log{flex:1; overflow-y:auto; padding:6px;}
@@ -195,6 +226,93 @@
     background:rgba(255,255,255,.06);
   }
 
+  /* DIAGNOSTIC ENTRIES */
+  .log-entry.diag-error{border-left-color:var(--red); background:rgba(224,102,95,.07);}
+  .log-entry.diag-warning{border-left-color:var(--accent-2); background:rgba(232,163,76,.06);}
+  .log-entry.diag-info{border-left-color:var(--blue); background:rgba(91,157,217,.06);}
+  .diag-code{
+    font-family:var(--mono); font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:3px; margin-right:6px;
+  }
+  .diag-error .diag-code{background:rgba(224,102,95,.22); color:var(--red);}
+  .diag-warning .diag-code{background:rgba(232,163,76,.22); color:var(--accent-2);}
+  .diag-info .diag-code{background:rgba(91,157,217,.22); color:var(--blue);}
+  .diag-title{font-weight:700;}
+  .diag-body{padding-top:6px;}
+  .diag-section-label{
+    font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-dim); margin:6px 0 2px;
+  }
+  .diag-detail, .diag-fix{
+    background:#0a0e13; border-radius:4px; padding:6px 8px; white-space:pre-wrap; word-break:break-word;
+    font-family:var(--mono); font-size:10.5px; margin:0 0 4px;
+  }
+  .diag-fix{border-left:2px solid var(--accent);}
+  .diag-actions{display:flex; gap:6px; margin-top:6px;}
+  .diag-actions button{padding:3px 9px; font-size:10px;}
+  .diag-actions button.copied{background:var(--green); color:#0a2b0f; border-color:var(--green);}
+
+  /* CONSOLE MODE TABS */
+  .mode-tabs{display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px;}
+  .mode-tab{
+    background:transparent; border:none; border-radius:4px; padding:4px 10px; font-size:10.5px; font-weight:700;
+    color:var(--text-dim); cursor:pointer; text-transform:uppercase; letter-spacing:.03em; display:flex; align-items:center; gap:5px;
+  }
+  .mode-tab.active{background:var(--accent); color:#08211c;}
+  .mode-tab .n{font-family:var(--mono); background:rgba(255,255,255,.15); border-radius:10px; padding:0 5px; font-size:9.5px;}
+  .mode-tab.active .n{background:rgba(0,0,0,.18);}
+  .console-view{flex:1; overflow-y:auto; display:flex; flex-direction:column; min-height:0;}
+  .console.collapsed .console-view{display:none;}
+
+  /* NOTES PANEL */
+  .notes-toolbar{padding:12px; border-bottom:1px solid var(--border); flex-shrink:0;}
+  #selectComponentBtn.picking{background:var(--accent-2); border-color:var(--accent-2); color:#2b1a04;}
+  #notesList{flex:1; overflow-y:auto; padding:10px 12px;}
+  #notesEmpty{flex-shrink:0;}
+  .note-card{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:10px;
+  }
+  .note-target-chip{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10.5px; font-weight:700;
+    background:rgba(95,179,163,.15); color:var(--accent); border:1px solid rgba(95,179,163,.4); border-radius:5px;
+    padding:2px 8px; margin-bottom:6px;
+  }
+  .note-preview{
+    font-family:var(--mono); font-size:10px; color:var(--text-dim); background:#0a0e13; border-radius:4px;
+    padding:4px 6px; margin-bottom:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .note-body{font-size:12px; line-height:1.5; margin-bottom:8px; word-break:break-word;}
+  .note-body p{margin:0 0 6px;}
+  .note-body ul, .note-body ol{margin:0 0 6px; padding-left:20px;}
+  .note-meta-row{display:flex; justify-content:space-between; align-items:center;}
+  .note-ts{color:var(--text-dim); font-size:10px;}
+  .note-actions{display:flex; gap:5px;}
+  .note-actions button{padding:3px 8px; font-size:10px;}
+  .note-actions button.copied{background:var(--green); color:#0a2b0f; border-color:var(--green);}
+
+  .notes-composer{padding:12px; border-bottom:1px solid var(--border); background:var(--panel-2); flex-shrink:0;}
+  .composer-target{
+    font-family:var(--mono); font-size:11px; color:var(--accent); background:rgba(95,179,163,.1);
+    border:1px solid rgba(95,179,163,.35); border-radius:5px; padding:6px 8px; margin-bottom:8px; word-break:break-word;
+  }
+  .rte-toolbar{display:flex; gap:4px; margin-bottom:6px;}
+  .rte-toolbar button{padding:3px 8px; font-size:11px; min-width:28px;}
+  .rte-editor{
+    min-height:70px; max-height:180px; overflow-y:auto; background:#0a0e13; border:1px solid var(--border);
+    border-radius:6px; padding:8px; font-size:12px; line-height:1.5; color:var(--text);
+  }
+  .rte-editor:empty:before{ content:attr(data-placeholder); color:var(--text-dim); }
+  .rte-editor:focus{outline:1px solid var(--accent);}
+  .composer-actions{display:flex; gap:6px; margin-top:8px;}
+  .composer-actions button{flex:1;}
+
+  /* PICKER BANNER (over the phone stage) */
+  .picker-banner{
+    position:absolute; top:16px; left:50%; transform:translateX(-50%); background:var(--accent-2); color:#2b1a04;
+    padding:8px 14px; border-radius:20px; font-size:12px; font-weight:700; display:none; align-items:center; gap:10px;
+    z-index:100; box-shadow:0 8px 20px rgba(0,0,0,.35); white-space:nowrap;
+  }
+  .picker-banner.show{display:flex;}
+  .picker-banner button{padding:2px 9px; font-size:10.5px; background:rgba(0,0,0,.15); border-color:rgba(0,0,0,.25); color:#2b1a04;}
+
   ::-webkit-scrollbar{width:9px; height:9px;}
   ::-webkit-scrollbar-thumb{background:#2a3441; border-radius:5px;}
   ::-webkit-scrollbar-track{background:transparent;}
@@ -207,6 +325,28 @@
   .range-row .val{min-width:52px; text-align:right; color:var(--text-dim); font-size:11px;}
 
   .msg-picker{width:100%; margin-bottom:8px;}
+
+  /* ASSETS TAB */
+  .asset-card{
+    display:flex; gap:10px; background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
+    padding:8px; margin-bottom:8px; align-items:flex-start;
+  }
+  .asset-thumb{
+    width:56px; height:56px; border-radius:6px; background:#0a0e13; flex-shrink:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--text-dim);
+  }
+  .asset-thumb img{width:100%; height:100%; object-fit:cover;}
+  .asset-body{flex:1; min-width:0;}
+  .asset-filename{font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .asset-meta{color:var(--text-dim); font-size:10.5px; margin:2px 0 6px;}
+  .asset-id-row{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
+  .asset-id{
+    font-family:var(--mono); font-size:10.5px; background:#0a0e13; border:1px solid var(--border);
+    border-radius:4px; padding:3px 6px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .asset-actions{display:flex; gap:5px; flex-wrap:wrap;}
+  .asset-actions button{padding:3px 7px; font-size:10px;}
+  .asset-actions button.copied{background:var(--green); color:#0a2b0f; border-color:var(--green);}
 </style>
 </head>
 <body>
@@ -254,6 +394,7 @@
       <div class="tab" data-tab="questions">Questions</div>
       <div class="tab" data-tab="health">Health</div>
       <div class="tab" data-tab="tables">Tables</div>
+      <div class="tab" data-tab="assets">Assets</div>
       <div class="tab" data-tab="theme">Theme</div>
       <div class="tab" data-tab="manual">Send</div>
     </div>
@@ -278,10 +419,11 @@
         </div>
 
         <div class="field-group">
-          <h3>CONFIG <span class="row-btns"><button data-regen="config">Clear</button></span></h3>
-          <div class="hint" style="margin-top:-4px;">activity.customConfig — the free-form settings your template reads for endpoints, flags, copy, etc.</div>
-          <textarea class="json-edit" id="edit-config"></textarea>
+          <h3>ACTIVITY CUSTOM CONFIG JSON <span class="row-btns"><button data-regen="config">Clear</button></span></h3>
+          <div class="hint" style="margin-top:-4px;">This is the exact field called <b>Custom config JSON</b> on the Activity in the Cogniss Creator/Admin panel (<span class="kbd">activity.customConfig</span>) — paste whatever you'd enter there and hit Apply. You can paste either just the config object (<span class="kbd">{ "step_goal": 8000, ... }</span>) or a full Activity JSON blob with a <span class="kbd">customConfig</span> key inside it — the emulator detects which one you gave it and pulls out the right thing.</div>
+          <textarea class="json-edit" id="edit-config" placeholder='{ "step_goal": 8000, "apiEndpoint": "https://..." }'></textarea>
           <div class="apply-row"><button class="primary" data-apply="config">Apply</button></div>
+          <div class="ok-msg" id="ok-config"></div>
           <div class="err-msg" id="err-config"></div>
         </div>
 
@@ -301,7 +443,7 @@
 
       <!-- QUESTIONS TAB -->
       <div class="tab-panel" id="panel-questions">
-        <div class="hint">Sent as <b>QUESTIONS</b> (array) and <b>QUESTION</b> (first / linear-flow current) init messages. Pick a preset or edit the JSON directly.</div>
+        <div class="hint">Sent as <b>QUESTIONS</b> (array) and <b>QUESTION</b> (first / linear-flow current) init messages. Pick a preset or edit the JSON directly. To use a real image or audio file for a question, upload it in the <b>Assets</b> tab and paste the resulting File ID into that question's <span class="kbd">image</span>/<span class="kbd">audio</span> field.</div>
         <div class="chip-row">
           <div class="chip" data-preset="quiz">Quiz (MULTICHOICE)</div>
           <div class="chip" data-preset="survey">Survey (mixed)</div>
@@ -339,15 +481,26 @@
 
       <!-- TABLES TAB -->
       <div class="tab-panel" id="panel-tables">
-        <div class="hint">Answers <b>REST_REQUEST</b> calls for models <b>Table</b> and <b>TableRow</b>. Edit freely — <span class="kbd">table</span> is required on every TableRow list call, matching production behaviour.</div>
+        <div class="hint">Answers <b>REST_REQUEST</b> calls for models <b>Table</b> and <b>TableRow</b>. Edit freely — <span class="kbd">table</span> is required on every TableRow list call, matching production behaviour. For <span class="kbd">objectid</span> columns pointing at images, upload the image in the <b>Assets</b> tab and paste its File ID as the column value.</div>
         <textarea class="json-edit tall" id="edit-tables"></textarea>
         <div class="apply-row"><button class="primary" data-apply="tables">Apply</button></div>
         <div class="err-msg" id="err-tables"></div>
       </div>
 
+      <!-- ASSETS TAB -->
+      <div class="tab-panel" id="panel-assets">
+        <div class="hint">Upload real images, audio, or video for icons, backgrounds, question media, or Table image columns. Each upload becomes a mock <b>File</b> record — when a template calls <span class="kbd">REST_REQUEST('get','File', id)</span> with a matching ID, the emulator returns your uploaded asset's data instead of a placeholder. Copy the ID and paste it wherever a template expects a File ID (a question's <span class="kbd">image</span>/<span class="kbd">audio</span> field, a Table's <span class="kbd">objectid</span> column, etc.) — or use the quick-assign buttons for common theme slots.</div>
+        <label class="file-label" style="width:100%; justify-content:center; margin-bottom:12px;">
+          Upload image / audio / video
+          <input type="file" id="assetInput" accept="image/*,audio/*,video/*" multiple>
+        </label>
+        <div id="assetEmpty" class="hint" style="text-align:center; padding:20px 0;">No assets uploaded yet.</div>
+        <div id="assetList"></div>
+      </div>
+
       <!-- THEME TAB -->
       <div class="tab-panel" id="panel-theme">
-        <div class="hint">Answers <b>REST_REQUEST</b> for models <b>App</b> (App-level theme) and <b>Settings</b> (platform fallback theme) — the pattern described in <span class="kbd">references/theme.md</span>.</div>
+        <div class="hint">Answers <b>REST_REQUEST</b> for models <b>App</b> (App-level theme) and <b>Settings</b> (platform fallback theme) — the pattern described in <span class="kbd">references/theme.md</span>. Background/header <span class="kbd">image</span> fields take a File ID — upload one in the <b>Assets</b> tab and either paste its ID below or use its quick-assign button.</div>
         <textarea class="json-edit tall" id="edit-theme"></textarea>
         <div class="apply-row"><button class="primary" data-apply="theme">Apply</button></div>
         <div class="err-msg" id="err-theme"></div>
@@ -401,22 +554,79 @@
             <button data-action="restart">Restart Session</button>
           </div>
         </div>
+        <div class="picker-banner" id="pickerBanner">
+          Click any element in the preview…
+          <button id="cancelPickBtn">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="console">
+  <div class="console" id="consolePanel">
     <div class="console-hdr">
-      <h2>Bridge Console</h2>
-      <div class="actions">
+      <div class="hdr-title">
+        <h2>Bridge Console</h2>
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="log">Log</button>
+          <button class="mode-tab" data-mode="notes">Notes <span class="n" id="notesCountBadge">0</span></button>
+        </div>
+      </div>
+      <div class="actions" id="logModeActions">
         <button id="expandAllBtn">Expand all</button>
         <button id="clearLogBtn">Clear</button>
+        <button id="minimizeBtn" class="minimize-btn" title="Minimize">–</button>
+      </div>
+      <div class="actions" id="notesModeActions" style="display:none;">
+        <button id="copyAllNotesBtn">Copy all as AI prompt</button>
+        <button id="minimizeBtn2" class="minimize-btn" title="Minimize">–</button>
       </div>
     </div>
-    <div class="console-filter">
-      <input type="text" id="logFilter" placeholder="Filter by key…">
+
+    <div class="console-view" id="consoleLogView">
+      <div class="console-severity-bar">
+        <div class="sev-chip active" data-severity="all">All <span class="n" id="countAll">0</span></div>
+        <div class="sev-chip err" data-severity="error">Errors <span class="n" id="countErr">0</span></div>
+        <div class="sev-chip warn" data-severity="warning">Warnings <span class="n" id="countWarn">0</span></div>
+        <div class="sev-chip info" data-severity="info">Info <span class="n" id="countInfo">0</span></div>
+        <div class="sev-chip" data-severity="traffic">Traffic</div>
+      </div>
+      <div class="console-filter">
+        <input type="text" id="logFilter" placeholder="Filter by key or diagnostic code…">
+      </div>
+      <div class="console-log" id="consoleLog"></div>
     </div>
-    <div class="console-log" id="consoleLog"></div>
+
+    <div class="console-view" id="consoleNotesView" style="display:none;">
+      <div class="notes-toolbar">
+        <button class="primary" id="selectComponentBtn">◎ Select a component…</button>
+        <div class="hint" style="margin:6px 0 0;">Click the button, then click any element in the preview to attach a note to it. Notes persist across reloads and sessions.</div>
+      </div>
+      <div class="notes-composer" id="notesComposer" style="display:none;">
+        <div class="composer-target" id="composerTarget"></div>
+        <div class="rte-toolbar">
+          <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+          <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+          <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+          <button type="button" data-cmd="insertUnorderedList" title="Bullet list">• list</button>
+          <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. list</button>
+          <button type="button" data-cmd="removeFormat" title="Clear formatting">✕ clear</button>
+        </div>
+        <div class="rte-editor" id="rteEditor" contenteditable="true" data-placeholder="e.g. Increase top padding to 24px on this section."></div>
+        <div class="composer-actions">
+          <button class="primary" id="saveNoteBtn">Save note</button>
+          <button id="cancelNoteBtn">Cancel</button>
+        </div>
+      </div>
+      <div id="notesEmpty" class="hint" style="text-align:center; padding:24px 0;">No notes yet. Select a component in the preview to leave one.</div>
+      <div id="notesList"></div>
+    </div>
+
+    <div class="collapsed-strip" id="collapsedStrip">
+      <button id="restoreBtn" title="Restore">⤢</button>
+      <div class="vlabel">Bridge Console</div>
+      <div class="cbadge err" id="collapsedErrCount">0</div>
+      <div class="cbadge warn" id="collapsedWarnCount">0</div>
+    </div>
   </div>
 </main>
 
@@ -778,11 +988,51 @@
     dataSentToTemplate: false,
     templateRawHtml: null,
     fileCache: {},
+    assets: [],
 
-    logSeq: 0
+    logSeq: 0,
+    readySignalCount: 0,
+    readyTimeoutId: null,
+    lastRestFingerprints: [],
+    notes: [],
+    picking: false
   };
 
   var STORAGE_KEY = 'cogniss_emulator_config_v1';
+  var ASSET_STORAGE_KEY = 'cogniss_emulator_assets_v1';
+  var NOTES_STORAGE_KEY = 'cogniss_emulator_notes_v1';
+
+  function saveAssetsToStorage(){
+    try{
+      var json = JSON.stringify(S.assets);
+      // Guard against blowing localStorage quota with large data URLs (~5MB typical limit)
+      if(json.length > 4200000){
+        toast('Assets are too large to save to browser storage — they will be lost on page reload, but stay available for this session.');
+        return;
+      }
+      localStorage.setItem(ASSET_STORAGE_KEY, json);
+    }catch(e){
+      toast('Could not save assets to browser storage (quota exceeded) — they will be lost on reload.');
+    }
+  }
+  function loadAssetsFromStorage(){
+    try{
+      var raw = localStorage.getItem(ASSET_STORAGE_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    }catch(e){ return []; }
+  }
+
+  function saveNotesToStorage(){
+    try{ localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(S.notes)); }catch(e){}
+  }
+  function loadNotesFromStorage(){
+    try{
+      var raw = localStorage.getItem(NOTES_STORAGE_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    }catch(e){ return []; }
+  }
 
   function saveConfigToStorage(){
     try{
@@ -839,11 +1089,24 @@
   var consoleLogEl = document.getElementById('consoleLog');
   var logFilterEl = document.getElementById('logFilter');
   var currentFilter = '';
+  var currentSeverityFilter = 'all'; // all | error | warning | info | traffic
+
+  var diagCounts = { error:0, warning:0, info:0 };
+
+  function updateDiagCountBadges(){
+    document.getElementById('countErr').textContent = diagCounts.error;
+    document.getElementById('countWarn').textContent = diagCounts.warning;
+    document.getElementById('countInfo').textContent = diagCounts.info;
+    document.getElementById('countAll').textContent = consoleLogEl.children.length;
+    document.getElementById('collapsedErrCount').textContent = diagCounts.error;
+    document.getElementById('collapsedWarnCount').textContent = diagCounts.warning;
+  }
 
   function logEntry(dir, key, data, extra){
     S.logSeq++;
     var el = document.createElement('div');
     el.className = 'log-entry dir-' + dir;
+    el.dataset.type = 'traffic';
     el.dataset.key = (key||'').toLowerCase();
     var arrow = dir==='out' ? '→ template' : dir==='in' ? '← template' : dir==='rest' ? '⇄ rest' : dir==='err' ? '⚠ error' : 'ℹ log';
     var time = new Date().toLocaleTimeString();
@@ -858,22 +1121,221 @@
     consoleLogEl.appendChild(el);
     consoleLogEl.scrollTop = consoleLogEl.scrollHeight;
     applyFilterToEntry(el);
+    updateDiagCountBadges();
   }
+
   function applyFilterToEntry(el){
-    if(!currentFilter){ el.style.display=''; return; }
-    el.style.display = el.dataset.key.indexOf(currentFilter) !== -1 ? '' : 'none';
+    var passSeverity = true;
+    if(currentSeverityFilter === 'traffic') passSeverity = el.dataset.type === 'traffic';
+    else if(currentSeverityFilter !== 'all') passSeverity = el.dataset.type === 'diag' && el.dataset.severity === currentSeverityFilter;
+    var passKeyword = true;
+    if(currentFilter) passKeyword = el.dataset.key.indexOf(currentFilter) !== -1;
+    el.style.display = (passSeverity && passKeyword) ? '' : 'none';
   }
+  function reapplyAllFilters(){ Array.prototype.forEach.call(consoleLogEl.children, applyFilterToEntry); }
+
   logFilterEl.addEventListener('input', function(){
     currentFilter = this.value.trim().toLowerCase();
-    Array.prototype.forEach.call(consoleLogEl.children, applyFilterToEntry);
+    reapplyAllFilters();
   });
-  document.getElementById('clearLogBtn').addEventListener('click', function(){ consoleLogEl.innerHTML=''; });
+  document.querySelectorAll('.sev-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      document.querySelectorAll('.sev-chip').forEach(function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+      currentSeverityFilter = chip.dataset.severity;
+      reapplyAllFilters();
+    });
+  });
+  document.getElementById('clearLogBtn').addEventListener('click', function(){
+    consoleLogEl.innerHTML='';
+    diagCounts = { error:0, warning:0, info:0 };
+    diagOnceFlags = {};
+    updateDiagCountBadges();
+  });
   document.getElementById('expandAllBtn').addEventListener('click', function(){
     var anyOpen = consoleLogEl.querySelector('.log-entry.open');
     Array.prototype.forEach.call(consoleLogEl.children, function(el){
       if(anyOpen) el.classList.remove('open'); else el.classList.add('open');
     });
   });
+
+  // Minimize / restore
+  var consolePanelEl = document.getElementById('consolePanel');
+  document.getElementById('minimizeBtn').addEventListener('click', function(){
+    consolePanelEl.classList.add('collapsed');
+  });
+  document.getElementById('restoreBtn').addEventListener('click', function(){
+    consolePanelEl.classList.remove('collapsed');
+  });
+
+  /* ---- Diagnostics registry ---- */
+  // Every code here is something a template author can hand directly to an AI assistant
+  // ("fix this issue in my Cogniss External Template") along with the detail + suggested fix.
+  var DIAG_DEFS = {
+    'STATIC-BRIDGE-1': { severity:'error', title:'No React Native WebView bridge detected',
+      fix:'Add mobile-vs-web detection and route outbound messages accordingly:\n\nvar isNative = typeof window.ReactNativeWebView !== "undefined";\nfunction postToApp(key, data) {\n  var text = JSON.stringify({ key: key, data: data === undefined ? null : data });\n  if (isNative) { window.ReactNativeWebView.postMessage(text); }\n  else { window.parent.postMessage(text, "*"); }\n}' },
+    'STATIC-BRIDGE-2': { severity:'error', title:'No window.parent.postMessage call found',
+      fix:'The template needs a web/iOS fallback path for sending messages to the container. Add window.parent.postMessage(text, "*") inside your postToApp() function\'s non-native branch.' },
+    'STATIC-LISTENER-1': { severity:'error', title:'No document message listener found',
+      fix:'Android React Native delivers messages via a "message" event on document, not window. Add:\n\ndocument.addEventListener("message", onMessage)\n\nalongside your window listener, or Android users will never receive any init data.' },
+    'STATIC-LISTENER-2': { severity:'error', title:'No window message listener found',
+      fix:'iOS React Native and the web container both deliver messages via a "message" event on window. Add:\n\nwindow.addEventListener("message", onMessage)\n\nalongside your document listener.' },
+    'STATIC-READY-1': { severity:'error', title:'No ready signal found (READY_DYNAMIC_MEDIA / READY / START)',
+      fix:'The container waits for the template to signal it is ready before sending any init data. Add, typically inside a window.load handler:\n\nwindow.addEventListener("load", function () {\n  postToApp("READY_DYNAMIC_MEDIA");\n});\n\nWithout this, the template will never receive USER, ACTIVITY, QUESTIONS, etc.' },
+    'STATIC-LINKS-1': { severity:'warning', title:'External link(s) missing target="_blank"',
+      fix:'Add target="_blank" to every <a> tag pointing at an external URL — required for correct link handling inside the mobile WebView.' },
+    'STATIC-AUTH-1': { severity:'info', title:'Possible AUTH token exposure (heuristic — verify manually)',
+      fix:'Treat the AUTH value (the JWT bearer token) as a secret: don\'t console.log it, don\'t write it into the DOM via innerHTML/textContent, and don\'t include it in error messages sent back to the container.' },
+    'STATIC-PARSE-1': { severity:'warning', title:'JSON.parse used without any catch block in the file',
+      fix:'Wrap incoming message parsing in try/catch so a malformed or unexpected message can\'t throw an uncaught exception and silently break the template:\n\nfunction onMessage(event) {\n  try {\n    var message = JSON.parse(event.data);\n    if (!message || !message.key) return;\n    handleMessage(message);\n  } catch (e) {}\n}' },
+
+    'RT-PARSE-1': { severity:'error', title:'Received an unparseable or malformed message',
+      fix:'Check what the template actually sent — it should always be JSON.stringify({ key, data }). If this came from the template\'s outbound side, verify postToApp() is building the envelope correctly before calling postMessage.' },
+    'RT-REST-MISSING-FIELD': { severity:'error', title:'REST_REQUEST is missing a required field',
+      fix:'A valid REST_REQUEST needs method, model, and a unique id at the TOP LEVEL of the message object:\n\n{ key: "REST_REQUEST", method: "get", model: "File", data: fileId, id: "req-001" }\n\nCheck that all three are present and not accidentally omitted.' },
+    'RT-REST-NESTED': { severity:'error', title:'REST_REQUEST fields are nested under "data" instead of top-level',
+      fix:'REST_REQUEST must NOT be sent through your normal postToApp() helper — that wraps everything under a "data" key. Build and send it directly instead:\n\nvar text = JSON.stringify({ key: "REST_REQUEST", method: method, model: model, data: data, id: id });\nwindow.parent.postMessage(text, "*"); // or window.ReactNativeWebView.postMessage(text) on mobile' },
+    'RT-REST-UNKNOWN-MODEL': { severity:'error', title:'REST_REQUEST used an unrecognized model name',
+      fix:'Double-check the "model" string is spelled and cased exactly right — valid models include File, ActivityResponse, QuestionResponse, Question, Activity, UserActivity, AppUser, Transaction, Event, AppleHealthRecord, Table, TableRow, App, and Settings.' },
+    'RT-REST-UNSUPPORTED-METHOD': { severity:'error', title:'REST_REQUEST used an unsupported method for this model',
+      fix:'Valid methods are get, post, put, and list — and not every model supports every method (e.g. Question and Activity are read-only: get/list only). Check the model/method combination against the API reference.' },
+    'RT-TABLEROW-NOTABLE': { severity:'error', title:'TableRow list call is missing the required "table" parameter',
+      fix:'Every REST_REQUEST(list, TableRow, ...) call must include a "table" field with the Table\'s ID (or name), e.g.:\n\nrestRequest("list", "TableRow", { table: tableId, sort: "index" })\n\nOmitting it returns a 400 error in production.' },
+    'RT-QR-SHAPE': { severity:'warning', title:'QUESTION_RESPONSE payload shape doesn\'t match the question type',
+      fix:'MULTICHOICE questions must submit { option: { _id: "..." } } (singular). MULTISELECT questions must submit { options: [{ _id: "..." }, ...] } (plural array). Check which field your template is sending for this question type.' },
+    'RT-QR-BADOPTION': { severity:'warning', title:'QUESTION_RESPONSE referenced an option _id that doesn\'t exist',
+      fix:'The submitted option _id doesn\'t match any option on the current question. Make sure the template is reading _id directly from the QUESTION/QUESTIONS payload rather than constructing or guessing its own ID.' },
+    'RT-QR-BADINDEX': { severity:'warning', title:'QUESTION_RESPONSE used an out-of-range index',
+      fix:'When submitting a non-linear QUESTION_RESPONSE with an explicit "index", that index must correspond to a real position in the QUESTIONS array the template received. Verify the index being sent matches the question actually being answered.' },
+    'RT-DUPLICATE-READY': { severity:'info', title:'Multiple ready signals sent',
+      fix:'The template sent more than one of READY / READY_DYNAMIC_MEDIA / START. This is usually harmless but often indicates the ready call is wired to fire more than once (e.g. attached to both window.load and DOMContentLoaded). Consider guarding it so it only fires once.' },
+    'RT-DUPLICATE-QUIT': { severity:'error', title:'QUIT was sent more than once',
+      fix:'Guard QUIT with a boolean flag so it can only be sent a single time:\n\nvar hasQuit = false;\nfunction quit(customScore) {\n  if (hasQuit) return;\n  hasQuit = true;\n  postToApp("QUIT", { completeState: "COMPLETE", customScore: customScore });\n}' },
+    'RT-EXIT-INCOMPLETE': { severity:'error', title:'EXIT sent while ActivityResponse.complete is still false',
+      fix:'Before sending EXIT, the template must PUT the ActivityResponse with complete: true (and an appropriate completeState) via REST_REQUEST. The container will otherwise treat this as the user abandoning the activity, not completing it:\n\nawait restRequest("put", "ActivityResponse", { id: state.ACTIVITY_RESPONSE.id, complete: true, completeState: "COMPLETE" });\npostToApp("EXIT", null);' },
+    'RT-TEMPLATE-ERROR': { severity:'error', title:'Template sent an ERROR message',
+      fix:'ERROR should only be sent for truly unrecoverable failures (missing required CONFIG, auth failure with no retry path). For anything transient (a failed fetch, a temporary network blip), handle it in the template\'s own UI and let the user retry instead of sending ERROR.' },
+    'RT-UNKNOWN-KEY': { severity:'warning', title:'Template sent a message with an unrecognized key',
+      fix:'Check for a typo in the message key — valid outbound keys are READY / READY_DYNAMIC_MEDIA / START, NEXT_QUESTION, QUESTIONS, QUESTION_RESPONSE, QUIT, EXIT, REST_REQUEST, LAUNCH_ACTIVITY, OPEN_SUBJECT, LOG, and ERROR.' },
+    'RT-NO-READY-TIMEOUT': { severity:'error', title:'No ready signal received within 8 seconds of load',
+      fix:'The template hasn\'t called postToApp("READY_DYNAMIC_MEDIA") yet. Check for a JavaScript error earlier in the file (open your browser\'s devtools console on the iframe) that might be preventing execution from reaching the ready call, or check that it isn\'t gated behind a promise/condition that never resolves.' },
+    'RT-NAV-WITHOUT-COMPLETE': { severity:'warning', title:'Navigated away without completing the current activity',
+      fix:'LAUNCH_ACTIVITY / OPEN_SUBJECT was sent before QUIT or EXIT. If this is intentional (the user is backing out), that\'s fine — but if the activity was meant to be completed first, send QUIT (or EXIT after marking ActivityResponse complete) before navigating.' },
+    'RT-REST-FLOOD': { severity:'warning', title:'The same REST_REQUEST was sent repeatedly in quick succession',
+      fix:'This usually means a retry loop or a request being re-fired on every render/re-render instead of being cached or awaited once. Check for a REST_REQUEST call sitting inside a loop, interval, or a component/render function that re-runs unexpectedly.' }
+  };
+
+  var diagOnceFlags = {};
+
+  function copyDiagPrompt(code, detail, btnEl){
+    var def = DIAG_DEFS[code];
+    var text = 'I\'m building a Cogniss External Template and my testing emulator flagged this issue:\n\n'
+      + '[' + code + '] ' + def.title + '\n'
+      + 'Severity: ' + def.severity + '\n\n'
+      + 'Details:\n' + detail + '\n\n'
+      + 'Suggested fix:\n' + def.fix + '\n\n'
+      + 'Please update my template code to resolve this.';
+    copyText(text, btnEl);
+  }
+
+  function logDiagnostic(code, detail, opts){
+    var def = DIAG_DEFS[code];
+    if(!def) return;
+    opts = opts || {};
+    // Throttle: some codes should only ever appear once per template load (static checks,
+    // one-shot runtime checks); others are allowed to repeat (e.g. bad option ids on every wrong answer).
+    if(opts.once){
+      var flagKey = code + (opts.onceKey || '');
+      if(diagOnceFlags[flagKey]) return;
+      diagOnceFlags[flagKey] = true;
+    }
+
+    diagCounts[def.severity] = (diagCounts[def.severity]||0) + 1;
+
+    var el = document.createElement('div');
+    el.className = 'log-entry diag-' + def.severity;
+    el.dataset.type = 'diag';
+    el.dataset.severity = def.severity;
+    el.dataset.key = (code + ' ' + def.title).toLowerCase();
+
+    var time = new Date().toLocaleTimeString();
+    var head = document.createElement('div');
+    head.className = 'lh';
+    head.innerHTML = '<span><span class="diag-code">'+code+'</span><span class="diag-title">'+def.title+'</span></span><span class="ts">'+time+'</span>';
+    head.addEventListener('click', function(){ el.classList.toggle('open'); });
+
+    var body = document.createElement('div');
+    body.className = 'diag-body';
+    var detailLabel = document.createElement('div');
+    detailLabel.className = 'diag-section-label';
+    detailLabel.textContent = 'Detail';
+    var detailPre = document.createElement('pre');
+    detailPre.className = 'diag-detail';
+    detailPre.textContent = detail || '(no further detail)';
+    var fixLabel = document.createElement('div');
+    fixLabel.className = 'diag-section-label';
+    fixLabel.textContent = 'Suggested fix';
+    var fixPre = document.createElement('pre');
+    fixPre.className = 'diag-fix';
+    fixPre.textContent = def.fix;
+    var actions = document.createElement('div');
+    actions.className = 'diag-actions';
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'primary';
+    copyBtn.textContent = 'Copy as AI prompt';
+    copyBtn.addEventListener('click', function(e){ e.stopPropagation(); copyDiagPrompt(code, detail||'', copyBtn); });
+    actions.appendChild(copyBtn);
+
+    body.appendChild(detailLabel);
+    body.appendChild(detailPre);
+    body.appendChild(fixLabel);
+    body.appendChild(fixPre);
+    body.appendChild(actions);
+
+    // Diagnostics open by default (unlike traffic, where you're scanning fast) so the fix is visible at a glance.
+    el.classList.add('open');
+    el.appendChild(head);
+    el.appendChild(body);
+    consoleLogEl.appendChild(el);
+    consoleLogEl.scrollTop = consoleLogEl.scrollHeight;
+    applyFilterToEntry(el);
+    updateDiagCountBadges();
+  }
+
+  /* ---- Static template scan (runs once per template load) ---- */
+  function scanTemplateForIssues(html){
+    var issues = [];
+    if(!/ReactNativeWebView/.test(html)){
+      issues.push({code:'STATIC-BRIDGE-1', detail:'Searched the uploaded file for the string "ReactNativeWebView" and found no reference anywhere.'});
+    }
+    if(!/parent\.postMessage/.test(html)){
+      issues.push({code:'STATIC-BRIDGE-2', detail:'Searched for "parent.postMessage" and found no call anywhere in the file.'});
+    }
+    if(!/document\.addEventListener\s*\(\s*['"]message['"]/.test(html)){
+      issues.push({code:'STATIC-LISTENER-1', detail:'Searched for document.addEventListener("message", ...) and found no match.'});
+    }
+    if(!/window\.addEventListener\s*\(\s*['"]message['"]/.test(html)){
+      issues.push({code:'STATIC-LISTENER-2', detail:'Searched for window.addEventListener("message", ...) and found no match.'});
+    }
+    if(!/READY_DYNAMIC_MEDIA|['"]READY['"]|['"]START['"]/.test(html)){
+      issues.push({code:'STATIC-READY-1', detail:'Searched for the strings READY_DYNAMIC_MEDIA, "READY", and "START" and found none of them.'});
+    }
+    var linkRe = /<a\s+[^>]*href\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>/gi;
+    var m, badLinks = [];
+    while((m = linkRe.exec(html))){
+      if(!/target\s*=\s*["']_blank["']/i.test(m[0])) badLinks.push(m[1]);
+    }
+    if(badLinks.length){
+      issues.push({code:'STATIC-LINKS-1', detail: badLinks.length + ' external link(s) found without target="_blank":\n' + badLinks.slice(0,8).join('\n') + (badLinks.length>8?'\n…':'')});
+    }
+    if(/AUTH[\s\S]{0,60}(innerHTML|console\.log|textContent)/i.test(html) || /(innerHTML|console\.log|textContent)[\s\S]{0,60}AUTH/i.test(html)){
+      issues.push({code:'STATIC-AUTH-1', detail:'Found a pattern where something referencing "AUTH" appears close to innerHTML, textContent, or console.log in the source. This may be a false positive — please verify manually.'});
+    }
+    if(/JSON\.parse/.test(html) && !/catch/.test(html)){
+      issues.push({code:'STATIC-PARSE-1', detail:'JSON.parse is used to read incoming messages, but the word "catch" does not appear anywhere in the file.'});
+    }
+    return issues;
+  }
 
   /* ============================== IFRAME BRIDGE ============================== */
 
@@ -883,6 +1345,70 @@
   var platformBadge = document.getElementById('platformBadge');
   var modeBadge = document.getElementById('modeBadge');
 
+  function pickerScriptTag(){
+    return ''
+      + '<script>(function(){'
+      + 'var picking=false,overlay=null,labelTag=null;'
+      + 'function ensureOverlay(){'
+      +   'if(overlay)return overlay;'
+      +   'overlay=document.createElement("div");'
+      +   'overlay.style.cssText="position:fixed;pointer-events:none;z-index:2147483647;border:2px solid #5fb3a3;background:rgba(95,179,163,0.18);border-radius:3px;display:none;box-sizing:border-box;";'
+      +   'document.documentElement.appendChild(overlay);'
+      +   'labelTag=document.createElement("div");'
+      +   'labelTag.style.cssText="position:fixed;pointer-events:none;z-index:2147483647;background:#5fb3a3;color:#08211c;font:11px monospace;padding:2px 6px;border-radius:3px;display:none;";'
+      +   'document.documentElement.appendChild(labelTag);'
+      +   'return overlay;'
+      + '}'
+      + 'function labelFor(el){'
+      +   'if(el.id)return "#"+el.id;'
+      +   'var da=["data-component","data-testid","data-id","data-name","data-key"];'
+      +   'for(var i=0;i<da.length;i++){var v=el.getAttribute(da[i]);if(v)return "["+da[i]+"=\\""+v+"\\"]";}'
+      +   'if(el.className&&typeof el.className==="string"&&el.className.trim())return "."+el.className.trim().split(/\\s+/)[0];'
+      +   'if(el.getAttribute("name"))return el.tagName.toLowerCase()+"[name=\\""+el.getAttribute("name")+"\\"]";'
+      +   'return el.tagName.toLowerCase();'
+      + '}'
+      + 'function selectorPath(el){'
+      +   'var parts=[],node=el,depth=0;'
+      +   'while(node&&node.nodeType===1&&depth<5&&node!==document.body){'
+      +     'var part=node.tagName.toLowerCase();'
+      +     'if(node.id){part+="#"+node.id;parts.unshift(part);break;}'
+      +     'if(node.className&&typeof node.className==="string"&&node.className.trim()){part+="."+node.className.trim().split(/\\s+/).slice(0,2).join(".");}'
+      +     'var parent=node.parentElement;'
+      +     'if(parent){var sibs=Array.prototype.filter.call(parent.children,function(c){return c.tagName===node.tagName;});if(sibs.length>1){part+=":nth-child("+(Array.prototype.indexOf.call(parent.children,node)+1)+")";}}'
+      +     'parts.unshift(part);node=parent;depth++;'
+      +   '}'
+      +   'return parts.join(" > ");'
+      + '}'
+      + 'function gatherAttrs(el){var out={};Array.prototype.forEach.call(el.attributes,function(a){out[a.name]=a.value;});return out;}'
+      + 'function updateOverlay(el){'
+      +   'ensureOverlay();var r=el.getBoundingClientRect();'
+      +   'overlay.style.top=r.top+"px";overlay.style.left=r.left+"px";overlay.style.width=r.width+"px";overlay.style.height=r.height+"px";overlay.style.display="block";'
+      +   'labelTag.textContent=labelFor(el);'
+      +   'labelTag.style.top=Math.max(0,r.top-20)+"px";labelTag.style.left=r.left+"px";labelTag.style.display="block";'
+      + '}'
+      + 'function hideOverlay(){if(overlay)overlay.style.display="none";if(labelTag)labelTag.style.display="none";}'
+      + 'function onMouseMove(e){if(!picking)return;updateOverlay(e.target);}'
+      + 'function onClick(e){'
+      +   'if(!picking)return;e.preventDefault();e.stopPropagation();'
+      +   'var el=e.target;'
+      +   'var info={label:labelFor(el),selector:selectorPath(el),tagName:el.tagName.toLowerCase(),id:el.id||null,'
+      +   'classes:(el.className&&typeof el.className==="string")?el.className.trim():null,attributes:gatherAttrs(el),'
+      +   'textPreview:(el.textContent||"").trim().slice(0,80),outerHtmlPreview:el.outerHTML?el.outerHTML.slice(0,240):""};'
+      +   'window.parent.postMessage(JSON.stringify({key:"__EMULATOR_COMPONENT_PICKED__",data:info}),"*");'
+      +   'picking=false;hideOverlay();document.documentElement.style.cursor="";'
+      + '}'
+      + 'function onMsg(event){'
+      +   'try{var m=JSON.parse(event.data);}catch(e){return;}'
+      +   'if(!m||m.key!=="__EMULATOR_ENABLE_PICKER__")return;'
+      +   'picking=!!m.data;document.documentElement.style.cursor=picking?"crosshair":"";if(!picking)hideOverlay();'
+      + '}'
+      + 'document.addEventListener("mousemove",onMouseMove,true);'
+      + 'document.addEventListener("click",onClick,true);'
+      + 'window.addEventListener("message",onMsg);'
+      + 'document.addEventListener("message",onMsg);'
+      + '})();<\/script>';
+  }
+
   function buildIframeDoc(rawHtml){
     var shim = ''
       + '<script>(function(){'
@@ -890,7 +1416,7 @@
       + 'window.__EMULATOR__ = true;'
       + (S.platform !== 'web' ? 'window.ReactNativeWebView = { postMessage: function(text){ window.parent.postMessage(text, "*"); } };' : '')
       + '}catch(e){}'
-      + '})();<\/script>';
+      + '})();<\/script>' + pickerScriptTag();
     // Insert shim as early as possible, right after <head> or at document start.
     if(/<head[^>]*>/i.test(rawHtml)){
       return rawHtml.replace(/<head[^>]*>/i, function(m){ return m + shim; });
@@ -912,11 +1438,30 @@
     S.dataSentToTemplate = false;
     S.linearIndex = 0;
     S.questionResponses = [];
+    S.readySignalCount = 0;
+    S.lastRestFingerprints = [];
+    diagOnceFlags = {};
+    if(S.picking) stopPicking();
+    closeComposer();
     hideCompletionOverlay();
     readyBadge.textContent = 'loading…';
     readyBadge.className = 'badge pending';
     var doc = buildIframeDoc(S.templateRawHtml);
     iframeEl.setAttribute('srcdoc', doc);
+
+    // Static analysis pass — run once per load, surfaced as diagnostics the user can act on immediately.
+    scanTemplateForIssues(S.templateRawHtml).forEach(function(issue){
+      logDiagnostic(issue.code, issue.detail, { once:true, onceKey:'load' });
+    });
+
+    // If the template never calls a ready signal, its author needs to know — rather than
+    // the emulator just sitting there looking broken with no explanation.
+    if(S.readyTimeoutId) clearTimeout(S.readyTimeoutId);
+    S.readyTimeoutId = setTimeout(function(){
+      if(!S.dataSentToTemplate){
+        logDiagnostic('RT-NO-READY-TIMEOUT', 'No READY / READY_DYNAMIC_MEDIA / START received within 8 seconds of loading the template.', { once:true, onceKey:'load' });
+      }
+    }, 8000);
   }
 
   function deliverToTemplate(text){
@@ -938,6 +1483,12 @@
     var text = JSON.stringify(envelope);
     logEntry('out', key, data);
     deliverToTemplate(text);
+  }
+
+  // For emulator-internal control messages (e.g. the component picker) that are NOT part of
+  // the Cogniss protocol and shouldn't appear in the bridge traffic log or trigger diagnostics.
+  function sendInternalToIframe(key, data){
+    deliverToTemplate(JSON.stringify({ key: key, data: data }));
   }
 
   function sendRestResponse(id, data, error){
@@ -1013,6 +1564,13 @@
   }
 
   function genFileRecord(fileId){
+    var asset = S.assets.find(function(a){ return a.id === fileId; });
+    if(asset){
+      return {
+        id: asset.id, url: asset.dataUrl, type: asset.mime, filename: asset.filename,
+        size: asset.size, width: asset.width||null, height: asset.height||null, duration: asset.duration||null
+      };
+    }
     if(S.fileCache[fileId]) return S.fileCache[fileId];
     var label = String(fileId).replace(/^file_/,'').replace(/_/g,' ') || 'mock file';
     var rec = {
@@ -1221,11 +1779,47 @@
     var raw = event.data;
     if(typeof raw !== 'string') return;
     var msg;
-    try{ msg = JSON.parse(raw); }catch(e){ return; }
-    if(!msg || !msg.key) return;
+    try{ msg = JSON.parse(raw); }catch(e){
+      logDiagnostic('RT-PARSE-1', 'event.data was not valid JSON. Raw value:\n' + String(raw).slice(0,300));
+      return;
+    }
+    if(!msg || !msg.key){
+      logDiagnostic('RT-PARSE-1', 'Message parsed but had no "key" field. Received:\n' + pretty(msg));
+      return;
+    }
+
+    // Emulator-internal messages (component picker) — not part of the Cogniss protocol,
+    // handled separately and never logged as bridge traffic or flagged as unrecognized.
+    if(msg.key === '__EMULATOR_COMPONENT_PICKED__'){
+      onComponentPicked(msg.data);
+      return;
+    }
+    if(String(msg.key).indexOf('__EMULATOR_') === 0){
+      return;
+    }
 
     if(msg.key === 'REST_REQUEST'){
       logEntry('rest', 'REST_REQUEST', msg);
+
+      var missingField = !msg.method || !msg.model || !msg.id;
+      if(missingField){
+        if(msg.data && (msg.data.method || msg.data.model)){
+          logDiagnostic('RT-REST-NESTED', 'Received REST_REQUEST envelope:\n' + pretty(msg) + '\n\nmethod/model were found nested under "data" instead of top-level.');
+        } else {
+          logDiagnostic('RT-REST-MISSING-FIELD', 'Received REST_REQUEST envelope missing method, model, and/or id:\n' + pretty(msg));
+        }
+      }
+
+      // Flood detection: same method+model+data fired 3+ times within a 4s window.
+      var fingerprint = (msg.method||'') + '|' + (msg.model||'') + '|' + pretty(msg.data);
+      var now = Date.now();
+      S.lastRestFingerprints = (S.lastRestFingerprints||[]).filter(function(f){ return now - f.t < 4000; });
+      S.lastRestFingerprints.push({ f: fingerprint, t: now });
+      var floodCount = S.lastRestFingerprints.filter(function(f){ return f.f === fingerprint; }).length;
+      if(floodCount === 3){
+        logDiagnostic('RT-REST-FLOOD', 'The same REST_REQUEST (method="'+msg.method+'", model="'+msg.model+'") was sent 3 times within 4 seconds:\n' + pretty(msg.data), { once:true, onceKey:fingerprint });
+      }
+
       var latency = S.latency + randInt(-30,30);
       if(latency<0) latency=0;
       setTimeout(function(){
@@ -1234,6 +1828,15 @@
           return;
         }
         var out = handleRestRequest(msg);
+        if(out.error){
+          if(/^Unknown model/.test(out.error)){
+            logDiagnostic('RT-REST-UNKNOWN-MODEL', 'model: "'+msg.model+'", method: "'+msg.method+'"\n\n' + out.error);
+          } else if(/table parameter required/i.test(out.error)){
+            logDiagnostic('RT-TABLEROW-NOTABLE', 'REST_REQUEST(list, TableRow, ...) was called with:\n' + pretty(msg.data));
+          } else if(/^Unsupported method/.test(out.error)){
+            logDiagnostic('RT-REST-UNSUPPORTED-METHOD', 'model: "'+msg.model+'", method: "'+msg.method+'"\n\n' + out.error);
+          }
+        }
         sendRestResponse(msg.id, out.result, out.error);
       }, latency);
       return;
@@ -1244,6 +1847,11 @@
       case 'READY':
       case 'START':
         logEntry('in', msg.key, msg.data);
+        S.readySignalCount = (S.readySignalCount||0) + 1;
+        if(S.readySignalCount > 1){
+          logDiagnostic('RT-DUPLICATE-READY', 'Received a ready signal ("'+msg.key+'") for the '+S.readySignalCount+' time in this session.', { once:true, onceKey:'load' });
+        }
+        if(S.readyTimeoutId){ clearTimeout(S.readyTimeoutId); S.readyTimeoutId = null; }
         readyBadge.textContent = 'ready sent';
         readyBadge.className = 'badge ready';
         sendInitSequence();
@@ -1265,6 +1873,28 @@
       case 'QUESTION_RESPONSE':
         logEntry('in', 'QUESTION_RESPONSE', msg.data);
         var payload = msg.data || {};
+        var qIdxCheck = (typeof payload.index === 'number') ? payload.index : S.linearIndex;
+        var qForCheck = S.questions[qIdxCheck];
+        if(!qForCheck){
+          logDiagnostic('RT-QR-BADINDEX', 'QUESTION_RESPONSE referenced index '+qIdxCheck+', but S.questions has '+S.questions.length+' question(s) (valid indices: 0-'+(S.questions.length-1)+').\n\nPayload:\n' + pretty(payload));
+        } else {
+          if(qForCheck.type === 'MULTICHOICE' && !payload.option){
+            logDiagnostic('RT-QR-SHAPE', 'Question type is MULTICHOICE but the payload has no "option" field.\n\nPayload:\n' + pretty(payload));
+          }
+          if(qForCheck.type === 'MULTISELECT' && !payload.options){
+            logDiagnostic('RT-QR-SHAPE', 'Question type is MULTISELECT but the payload has no "options" array.\n\nPayload:\n' + pretty(payload));
+          }
+          if(qForCheck.type === 'MULTICHOICE' && payload.option && payload.option._id){
+            var matchOpt = qForCheck.options.some(function(o){ return o._id === payload.option._id; });
+            if(!matchOpt) logDiagnostic('RT-QR-BADOPTION', 'Submitted option._id "'+payload.option._id+'" does not match any option on this question.\n\nQuestion options: ' + qForCheck.options.map(function(o){return o._id;}).join(', '));
+          }
+          if(qForCheck.type === 'MULTISELECT' && payload.options && payload.options.length){
+            payload.options.forEach(function(o){
+              var matchOpt2 = qForCheck.options.some(function(qo){ return qo._id === o._id; });
+              if(!matchOpt2) logDiagnostic('RT-QR-BADOPTION', 'Submitted options[]._id "'+o._id+'" does not match any option on this question.\n\nQuestion options: ' + qForCheck.options.map(function(qo){return qo._id;}).join(', '));
+            });
+          }
+        }
         var resultObj = computeAnswerResult(payload);
         // store as a QuestionResponse record too
         var qIdx = (typeof payload.index === 'number') ? payload.index : S.linearIndex;
@@ -1283,7 +1913,11 @@
 
       case 'QUIT':
         logEntry('in', 'QUIT', msg.data);
-        if(S.hasQuit){ toast('Ignored duplicate QUIT — template should guard against sending this twice.'); return; }
+        if(S.hasQuit){
+          logDiagnostic('RT-DUPLICATE-QUIT', 'QUIT was received again after already being marked complete. Payload:\n' + pretty(msg.data));
+          toast('Ignored duplicate QUIT — template should guard against sending this twice.');
+          return;
+        }
         S.hasQuit = true;
         Object.assign(S.activityResponse, { complete:true, completeState: (msg.data&&msg.data.completeState)||'COMPLETE', customScore: msg.data&&msg.data.customScore!==undefined?msg.data.customScore:S.activityResponse.customScore });
         refreshArView();
@@ -1294,16 +1928,25 @@
         logEntry('in', 'EXIT', msg.data);
         if(S.hasQuit){ toast('Ignored duplicate EXIT.'); return; }
         S.hasQuit = true;
+        if(S.activityResponse.complete !== true){
+          logDiagnostic('RT-EXIT-INCOMPLETE', 'EXIT was received, but ActivityResponse.complete is still false. Current ActivityResponse:\n' + pretty(S.activityResponse));
+        }
         showCompletionOverlay('EXIT', {});
         break;
 
       case 'LAUNCH_ACTIVITY':
         logEntry('in', 'LAUNCH_ACTIVITY', msg.data);
+        if(!S.hasQuit){
+          logDiagnostic('RT-NAV-WITHOUT-COMPLETE', 'LAUNCH_ACTIVITY (target id: '+(msg.data&&msg.data.id)+') was sent without a prior QUIT or EXIT for the current activity.', { once:true, onceKey:'load' });
+        }
         toast('Template requested LAUNCH_ACTIVITY → ' + (msg.data && msg.data.id));
         break;
 
       case 'OPEN_SUBJECT':
         logEntry('in', 'OPEN_SUBJECT', msg.data);
+        if(!S.hasQuit){
+          logDiagnostic('RT-NAV-WITHOUT-COMPLETE', 'OPEN_SUBJECT (target id: '+(msg.data&&msg.data.id)+') was sent without a prior QUIT or EXIT for the current activity.', { once:true, onceKey:'load' });
+        }
         toast('Template requested OPEN_SUBJECT → ' + (msg.data && msg.data.id));
         break;
 
@@ -1313,11 +1956,13 @@
 
       case 'ERROR':
         logEntry('err', 'ERROR', msg.data);
+        logDiagnostic('RT-TEMPLATE-ERROR', 'Template sent ERROR with payload:\n' + pretty(msg.data));
         toast('Template sent ERROR: ' + (msg.data && msg.data.message ? msg.data.message : JSON.stringify(msg.data)));
         break;
 
       default:
         logEntry('in', msg.key + ' (unrecognized)', msg.data);
+        logDiagnostic('RT-UNKNOWN-KEY', 'Received message with key "'+msg.key+'". Payload:\n' + pretty(msg.data));
     }
   });
 
@@ -1468,7 +2113,20 @@
         showErr(key, '');
         if(key==='user') S.user = parsed;
         if(key==='activity'){ S.activity = parsed; S.config = parsed.customConfig || S.config; }
-        if(key==='config'){ S.config = parsed; S.activity.customConfig = parsed; document.getElementById('edit-activity').value = pretty(S.activity); }
+        if(key==='config'){
+          var okEl = document.getElementById('ok-config');
+          var extracted = parsed;
+          var detectedFullActivity = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            && parsed.customConfig && typeof parsed.customConfig === 'object' && !Array.isArray(parsed.customConfig);
+          if(detectedFullActivity){
+            extracted = parsed.customConfig;
+            ta.value = pretty(extracted);
+            if(okEl){ okEl.textContent = 'Detected a full Activity JSON blob — pulled out customConfig automatically.'; okEl.style.display='block'; setTimeout(function(){okEl.style.display='none';}, 4000); }
+          } else if(okEl){ okEl.style.display='none'; }
+          S.config = extracted;
+          S.activity.customConfig = extracted;
+          document.getElementById('edit-activity').value = pretty(S.activity);
+        }
         if(key==='variation') S.templateVariation = parsed;
         if(key==='questions') S.questions = parsed;
         if(key==='tables') S.tables = parsed;
@@ -1528,6 +2186,415 @@
     toast('Health data regenerated. Templates fetching AppleHealthRecord will see the new data on next REST_REQUEST.');
   });
 
+  // Assets tab
+  function slugify(text){
+    return String(text).toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,28) || 'asset';
+  }
+
+  function readAsDataURL(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result); };
+      reader.onerror = function(){ reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function imageDimensions(dataUrl){
+    return new Promise(function(resolve){
+      var settled = false;
+      function finish(dim){ if(settled) return; settled = true; resolve(dim); }
+      var img = new Image();
+      img.onload = function(){ finish({width: img.naturalWidth, height: img.naturalHeight}); };
+      img.onerror = function(){ finish({width:null, height:null}); };
+      img.src = dataUrl;
+      setTimeout(function(){ finish({width:null, height:null}); }, 3000);
+    });
+  }
+
+  function kindFromMime(mime){
+    if(mime.indexOf('image/')===0) return 'image';
+    if(mime.indexOf('audio/')===0) return 'audio';
+    if(mime.indexOf('video/')===0) return 'video';
+    return 'file';
+  }
+
+  function addAssetFiles(fileList){
+    var files = Array.prototype.slice.call(fileList);
+    files.forEach(function(file){
+      readAsDataURL(file).then(function(dataUrl){
+        var kind = kindFromMime(file.type || '');
+        var asset = {
+          id: 'file_' + slugify(file.name) + '_' + Math.random().toString(36).slice(2,7),
+          filename: file.name,
+          mime: file.type || 'application/octet-stream',
+          size: file.size,
+          kind: kind,
+          dataUrl: dataUrl,
+          width: null, height: null, duration: null
+        };
+        if(kind === 'image'){
+          imageDimensions(dataUrl).then(function(dim){
+            asset.width = dim.width; asset.height = dim.height;
+            S.assets.push(asset);
+            renderAssetList();
+            saveAssetsToStorage();
+          });
+        } else {
+          S.assets.push(asset);
+          renderAssetList();
+          saveAssetsToStorage();
+        }
+      }).catch(function(){
+        toast('Could not read file: ' + file.name);
+      });
+    });
+  }
+
+  function copyText(text, btnEl){
+    function done(){
+      if(btnEl){
+        var original = btnEl.textContent;
+        btnEl.textContent = 'Copied!';
+        btnEl.classList.add('copied');
+        setTimeout(function(){ btnEl.textContent = original; btnEl.classList.remove('copied'); }, 1200);
+      }
+      toast('Copied to clipboard: ' + text);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text); done(); });
+    } else {
+      fallbackCopy(text); done();
+    }
+  }
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  function assignThemeSlot(assetId, slot){
+    if(slot==='background'){ S.theme.generalBackground = S.theme.generalBackground || {}; S.theme.generalBackground.image = assetId; }
+    if(slot==='featureHeader'){ S.theme.featureHeader = S.theme.featureHeader || {}; S.theme.featureHeader.image = assetId; }
+    if(slot==='webFeatureHeader'){ S.theme.webFeatureHeader = S.theme.webFeatureHeader || {}; S.theme.webFeatureHeader.image = assetId; }
+    document.getElementById('edit-theme').value = pretty(S.theme);
+    saveConfigToStorage();
+    toast('Assigned to theme.' + (slot==='background'?'generalBackground':slot) + '.image — Apply the Theme tab to confirm, then Reload.');
+  }
+
+  function removeAsset(assetId){
+    S.assets = S.assets.filter(function(a){ return a.id !== assetId; });
+    renderAssetList();
+    saveAssetsToStorage();
+  }
+
+  function humanSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(1) + ' MB';
+  }
+
+  function renderAssetList(){
+    var list = document.getElementById('assetList');
+    var empty = document.getElementById('assetEmpty');
+    list.innerHTML = '';
+    empty.style.display = S.assets.length ? 'none' : 'block';
+    S.assets.forEach(function(asset){
+      var card = document.createElement('div');
+      card.className = 'asset-card';
+
+      var thumb = document.createElement('div');
+      thumb.className = 'asset-thumb';
+      if(asset.kind === 'image'){
+        var img = document.createElement('img');
+        img.src = asset.dataUrl;
+        thumb.appendChild(img);
+      } else if(asset.kind === 'audio'){
+        thumb.textContent = '♪';
+      } else if(asset.kind === 'video'){
+        thumb.textContent = '▶';
+      } else {
+        thumb.textContent = '📄';
+      }
+      card.appendChild(thumb);
+
+      var body = document.createElement('div');
+      body.className = 'asset-body';
+
+      var fname = document.createElement('div');
+      fname.className = 'asset-filename';
+      fname.textContent = asset.filename;
+      body.appendChild(fname);
+
+      var meta = document.createElement('div');
+      meta.className = 'asset-meta';
+      meta.textContent = asset.kind.toUpperCase() + ' · ' + humanSize(asset.size) + (asset.width ? (' · ' + asset.width + '×' + asset.height) : '');
+      body.appendChild(meta);
+
+      var idRow = document.createElement('div');
+      idRow.className = 'asset-id-row';
+      var idSpan = document.createElement('span');
+      idSpan.className = 'asset-id';
+      idSpan.textContent = asset.id;
+      idSpan.title = asset.id;
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy ID';
+      copyBtn.addEventListener('click', function(){ copyText(asset.id, copyBtn); });
+      idRow.appendChild(idSpan);
+      idRow.appendChild(copyBtn);
+      body.appendChild(idRow);
+
+      var actions = document.createElement('div');
+      actions.className = 'asset-actions';
+      if(asset.kind === 'image'){
+        var bgBtn = document.createElement('button');
+        bgBtn.textContent = 'Set as background';
+        bgBtn.addEventListener('click', function(){ assignThemeSlot(asset.id, 'background'); });
+        var fhBtn = document.createElement('button');
+        fhBtn.textContent = 'Set as feature header';
+        fhBtn.addEventListener('click', function(){ assignThemeSlot(asset.id, 'featureHeader'); });
+        actions.appendChild(bgBtn);
+        actions.appendChild(fhBtn);
+      }
+      var delBtn = document.createElement('button');
+      delBtn.className = 'danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', function(){ removeAsset(asset.id); });
+      actions.appendChild(delBtn);
+      body.appendChild(actions);
+
+      card.appendChild(body);
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('assetInput').addEventListener('change', function(e){
+    if(e.target.files.length) addAssetFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  /* ============================== NOTES FEATURE ============================== */
+
+  // -- Console mode tabs (Log / Notes) --
+  document.querySelectorAll('.mode-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.mode-tab').forEach(function(t){ t.classList.remove('active'); });
+      tab.classList.add('active');
+      var mode = tab.dataset.mode;
+      document.getElementById('consoleLogView').style.display = mode==='log' ? 'flex' : 'none';
+      document.getElementById('consoleNotesView').style.display = mode==='notes' ? 'flex' : 'none';
+      document.getElementById('logModeActions').style.display = mode==='log' ? 'flex' : 'none';
+      document.getElementById('notesModeActions').style.display = mode==='notes' ? 'flex' : 'none';
+      if(mode==='notes' && consolePanelEl.classList.contains('collapsed')) consolePanelEl.classList.remove('collapsed');
+    });
+  });
+  // Both minimize buttons (one per action row) do the same thing.
+  document.getElementById('minimizeBtn2').addEventListener('click', function(){
+    consolePanelEl.classList.add('collapsed');
+  });
+
+  // -- Component picker --
+  var pickerBannerEl = document.getElementById('pickerBanner');
+  var selectComponentBtn = document.getElementById('selectComponentBtn');
+  var pendingComponent = null; // component info currently attached to the open composer
+  var editingNoteId = null;    // set when editing an existing note instead of creating a new one
+
+  function startPicking(){
+    if(!S.templateRawHtml){ toast('Upload a template first.'); return; }
+    closeComposer();
+    S.picking = true;
+    selectComponentBtn.classList.add('picking');
+    selectComponentBtn.textContent = '◎ Click an element in the preview…';
+    pickerBannerEl.classList.add('show');
+    sendInternalToIframe('__EMULATOR_ENABLE_PICKER__', true);
+  }
+  function stopPicking(){
+    S.picking = false;
+    selectComponentBtn.classList.remove('picking');
+    selectComponentBtn.textContent = '◎ Select a component…';
+    pickerBannerEl.classList.remove('show');
+    sendInternalToIframe('__EMULATOR_ENABLE_PICKER__', false);
+  }
+  selectComponentBtn.addEventListener('click', function(){
+    if(S.picking) stopPicking(); else startPicking();
+  });
+  document.getElementById('cancelPickBtn').addEventListener('click', stopPicking);
+
+  function onComponentPicked(info){
+    stopPicking();
+    pendingComponent = info;
+    editingNoteId = null;
+    openComposer(info, '');
+  }
+
+  // -- Rich text composer --
+  var composerEl = document.getElementById('notesComposer');
+  var composerTargetEl = document.getElementById('composerTarget');
+  var rteEditorEl = document.getElementById('rteEditor');
+
+  function componentSummaryHtml(info){
+    var chip = escapeHtml(info.label || info.tagName || 'element');
+    var preview = info.outerHtmlPreview ? escapeHtml(info.outerHtmlPreview) : '';
+    return '<span class="note-target-chip">' + chip + '</span><div class="note-preview">' + preview + '</div>';
+  }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function openComposer(info, existingHtml){
+    composerTargetEl.innerHTML = componentSummaryHtml(info || {});
+    rteEditorEl.innerHTML = existingHtml || '';
+    composerEl.style.display = 'block';
+    rteEditorEl.focus();
+  }
+  function closeComposer(){
+    composerEl.style.display = 'none';
+    rteEditorEl.innerHTML = '';
+    pendingComponent = null;
+    editingNoteId = null;
+  }
+
+  document.querySelectorAll('.rte-toolbar button').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      rteEditorEl.focus();
+      try{ document.execCommand(btn.dataset.cmd, false, null); }catch(err){}
+    });
+  });
+
+  document.getElementById('saveNoteBtn').addEventListener('click', function(){
+    var html = rteEditorEl.innerHTML.trim();
+    if(!html){ toast('Write a note before saving.'); return; }
+    if(editingNoteId){
+      var existing = S.notes.find(function(n){ return n.id === editingNoteId; });
+      if(existing){ existing.html = html; existing.updatedAt = new Date().toISOString(); }
+    } else {
+      S.notes.unshift({
+        id: uid('note'),
+        component: pendingComponent || null,
+        html: html,
+        createdAt: new Date().toISOString(),
+        updatedAt: null
+      });
+    }
+    saveNotesToStorage();
+    renderNotesList();
+    closeComposer();
+    toast('Note saved.');
+  });
+  document.getElementById('cancelNoteBtn').addEventListener('click', closeComposer);
+
+  // -- Note list rendering --
+  function timeAgo(iso){
+    var diff = Date.now() - new Date(iso).getTime();
+    var mins = Math.floor(diff/60000);
+    if(mins < 1) return 'just now';
+    if(mins < 60) return mins + 'm ago';
+    var hrs = Math.floor(mins/60);
+    if(hrs < 24) return hrs + 'h ago';
+    return Math.floor(hrs/24) + 'd ago';
+  }
+
+  function plainTextFromHtml(html){
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return (tmp.textContent || '').trim();
+  }
+
+  function copyNotePrompt(note, btnEl){
+    var comp = note.component;
+    var label = comp ? (comp.label || comp.tagName) : 'General (not tied to a specific component)';
+    var text = 'Please make the following UI adjustment to my Cogniss External Template:\n\n'
+      + 'Component: ' + label + '\n'
+      + (comp && comp.outerHtmlPreview ? ('Element: ' + comp.outerHtmlPreview + '\n') : '')
+      + '\nInstruction:\n' + plainTextFromHtml(note.html) + '\n\n'
+      + 'Please update the template code to apply this change.';
+    copyText(text, btnEl);
+  }
+
+  function copyAllNotesPrompt(){
+    if(!S.notes.length){ toast('No notes to copy yet.'); return; }
+    var lines = ['Please make the following UI adjustments to my Cogniss External Template:', ''];
+    S.notes.slice().reverse().forEach(function(note, i){
+      var comp = note.component;
+      var label = comp ? (comp.label || comp.tagName) : 'General';
+      lines.push((i+1) + '. Component: ' + label);
+      if(comp && comp.outerHtmlPreview) lines.push('   Element: ' + comp.outerHtmlPreview);
+      lines.push('   Instruction: ' + plainTextFromHtml(note.html));
+      lines.push('');
+    });
+    lines.push('Please update the template code to apply these changes.');
+    copyText(lines.join('\n'), document.getElementById('copyAllNotesBtn'));
+  }
+  document.getElementById('copyAllNotesBtn').addEventListener('click', copyAllNotesPrompt);
+
+  function deleteNote(id){
+    S.notes = S.notes.filter(function(n){ return n.id !== id; });
+    saveNotesToStorage();
+    renderNotesList();
+  }
+  function editNote(id){
+    var note = S.notes.find(function(n){ return n.id === id; });
+    if(!note) return;
+    editingNoteId = id;
+    pendingComponent = note.component;
+    openComposer(note.component, note.html);
+  }
+
+  function renderNotesList(){
+    var list = document.getElementById('notesList');
+    var empty = document.getElementById('notesEmpty');
+    list.innerHTML = '';
+    empty.style.display = S.notes.length ? 'none' : 'block';
+    document.getElementById('notesCountBadge').textContent = S.notes.length;
+
+    S.notes.forEach(function(note){
+      var card = document.createElement('div');
+      card.className = 'note-card';
+
+      var comp = note.component;
+      var chipHtml = comp
+        ? '<span class="note-target-chip">' + escapeHtml(comp.label || comp.tagName) + '</span>'
+        : '<span class="note-target-chip" style="background:rgba(91,157,217,.15); color:var(--blue); border-color:rgba(91,157,217,.4);">General note</span>';
+      var previewHtml = (comp && comp.outerHtmlPreview) ? '<div class="note-preview">' + escapeHtml(comp.outerHtmlPreview) + '</div>' : '';
+
+      var body = document.createElement('div');
+      body.className = 'note-body';
+      body.innerHTML = note.html;
+
+      var meta = document.createElement('div');
+      meta.className = 'note-meta-row';
+      var ts = document.createElement('div');
+      ts.className = 'note-ts';
+      ts.textContent = timeAgo(note.updatedAt || note.createdAt) + (note.updatedAt ? ' (edited)' : '');
+      var actions = document.createElement('div');
+      actions.className = 'note-actions';
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy as AI prompt';
+      copyBtn.addEventListener('click', function(){ copyNotePrompt(note, copyBtn); });
+      var editBtn = document.createElement('button');
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', function(){ editNote(note.id); });
+      var delBtn = document.createElement('button');
+      delBtn.className = 'danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', function(){ deleteNote(note.id); });
+      actions.appendChild(copyBtn);
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      meta.appendChild(ts);
+      meta.appendChild(actions);
+
+      card.innerHTML = chipHtml + previewHtml;
+      card.appendChild(body);
+      card.appendChild(meta);
+      list.appendChild(card);
+    });
+  }
+
   // Manual send tab
   document.getElementById('manualKey').addEventListener('change', function(){
     document.getElementById('manualCustomKey').style.display = this.value==='CUSTOM' ? 'block' : 'none';
@@ -1550,8 +2617,12 @@
 
   /* ============================== INIT ============================== */
 
+  S.assets = loadAssetsFromStorage();
+  S.notes = loadNotesFromStorage();
   freshSession();
   refreshAllEditors();
+  renderAssetList();
+  renderNotesList();
 
   // Seed some helpful defaults into manual-send textarea
   document.getElementById('manualData').value = pretty({ example: true });
