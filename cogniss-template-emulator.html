@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cogniss External Template Emulator</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#141a22;
+    --panel-2:#1b232e;
+    --border:#2a3441;
+    --text:#e6edf3;
+    --text-dim:#8b98a8;
+    --accent:#5fb3a3;
+    --accent-2:#e8a34c;
+    --blue:#5b9dd9;
+    --green:#6bbf7a;
+    --red:#e0665f;
+    --mono: "SF Mono", "Consolas", "Menlo", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:13px; display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; padding:10px 16px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  header h1{
+    font-size:14px; font-weight:600; margin:0; white-space:nowrap;
+    display:flex; align-items:center; gap:8px;
+  }
+  header h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;}
+  .hdr-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:1;}
+  .hdr-group{display:flex; align-items:center; gap:6px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:4px 8px;}
+  .hdr-group label{color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:.04em;}
+  select, button, input[type=text], input[type=number], textarea{
+    font-family:var(--mono); font-size:12px; background:var(--panel-2); color:var(--text);
+    border:1px solid var(--border); border-radius:5px; padding:5px 8px;
+  }
+  button{
+    cursor:pointer; background:var(--panel-2); transition:background .15s, border-color .15s;
+  }
+  button:hover{background:#232d3a; border-color:#3a4757;}
+  button.primary{background:var(--accent); color:#08211c; border-color:var(--accent); font-weight:600;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.danger{background:var(--red); color:#2a0d0b; border-color:var(--red); font-weight:600;}
+  button.ghost{background:transparent;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  input[type=file]{display:none;}
+  .file-label{
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:var(--accent);
+    color:#08211c; font-weight:600; border-radius:5px; padding:6px 12px; font-size:12px;
+  }
+  .file-label:hover{filter:brightness(1.08);}
+
+  main{flex:1; display:flex; overflow:hidden;}
+
+  /* LEFT PANEL */
+  .sidebar{
+    width:380px; min-width:340px; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .tabs{display:flex; border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto;}
+  .tab{
+    padding:9px 12px; cursor:pointer; color:var(--text-dim); font-size:11.5px; font-weight:600;
+    border-bottom:2px solid transparent; white-space:nowrap; text-transform:uppercase; letter-spacing:.03em;
+  }
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .tab-content{flex:1; overflow-y:auto; padding:14px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .field-group{margin-bottom:16px;}
+  .field-group h3{
+    font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-dim);
+    margin:0 0 6px 0; display:flex; align-items:center; justify-content:space-between;
+  }
+  .field-group h3 .row-btns{display:flex; gap:4px;}
+  .field-group h3 .row-btns button{padding:2px 7px; font-size:10px;}
+  textarea.json-edit{
+    width:100%; height:130px; resize:vertical; line-height:1.5; tab-size:2;
+    white-space:pre; overflow:auto;
+  }
+  textarea.json-edit.tall{height:260px;}
+  .apply-row{display:flex; gap:6px; margin-top:6px;}
+  .apply-row button{flex:1;}
+  .err-msg{color:var(--red); font-size:11px; margin-top:4px; display:none;}
+  .ok-msg{color:var(--green); font-size:11px; margin-top:4px; display:none;}
+  .hint{color:var(--text-dim); font-size:11px; line-height:1.5; margin:4px 0 8px;}
+  .inline-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .inline-row label{color:var(--text-dim); font-size:11.5px; min-width:110px;}
+  .inline-row input, .inline-row select{flex:1;}
+  .chip-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
+  .chip{
+    font-size:10.5px; padding:4px 9px; border-radius:20px; border:1px solid var(--border);
+    background:var(--panel-2); cursor:pointer; color:var(--text-dim);
+  }
+  .chip:hover{color:var(--text); border-color:var(--accent);}
+
+  /* CENTER STAGE */
+  .stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; background:radial-gradient(ellipse at top, #131a22, #0a0e13); overflow:auto; padding:24px;}
+  .device-toolbar{display:flex; gap:10px; align-items:center; margin-bottom:14px; color:var(--text-dim); font-size:11px;}
+  .device-toolbar .badge{background:var(--panel-2); border:1px solid var(--border); padding:3px 9px; border-radius:20px;}
+  .device-toolbar .badge.ready{color:var(--green); border-color:var(--green);}
+  .device-toolbar .badge.pending{color:var(--accent-2); border-color:var(--accent-2);}
+
+  .phone{
+    width:390px; height:760px; background:#000; border-radius:44px; padding:14px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.6), 0 0 0 2px #2a2a2a; position:relative; flex-shrink:0;
+  }
+  .phone .notch{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:24px;
+    background:#000; border-radius:0 0 16px 16px; z-index:5;
+  }
+  .phone .screen{
+    width:100%; height:100%; border-radius:32px; overflow:hidden; background:#fff; position:relative;
+  }
+  .phone iframe{width:100%; height:100%; border:none; display:block;}
+  .fullwidth .phone{width:100%; max-width:900px; height:80vh; border-radius:10px; padding:0; box-shadow:none;}
+  .fullwidth .phone .notch{display:none;}
+  .fullwidth .phone .screen{border-radius:8px; border:1px solid var(--border);}
+
+  .empty-state{
+    color:var(--text-dim); text-align:center; padding:40px 20px; display:flex; flex-direction:column;
+    align-items:center; gap:10px; height:100%; justify-content:center;
+  }
+  .empty-state svg{opacity:.4;}
+
+  .overlay{
+    position:absolute; inset:0; background:rgba(5,8,12,.88); display:none;
+    align-items:center; justify-content:center; z-index:50; border-radius:32px;
+  }
+  .overlay.show{display:flex;}
+  .overlay-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:24px;
+    width:280px; text-align:center;
+  }
+  .overlay-card .icon{font-size:34px; margin-bottom:8px;}
+  .overlay-card h4{margin:0 0 4px; font-size:15px;}
+  .overlay-card p{color:var(--text-dim); font-size:11.5px; margin:4px 0;}
+  .overlay-card .state-pass{color:var(--green); font-weight:700;}
+  .overlay-card .state-fail{color:var(--red); font-weight:700;}
+  .overlay-card .state-complete{color:var(--accent); font-weight:700;}
+  .overlay-card button{width:100%; margin-top:14px;}
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel-2);
+    border:1px solid var(--accent); color:var(--text); padding:10px 18px; border-radius:8px; font-size:12px;
+    z-index:200; opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  /* RIGHT: DEBUG CONSOLE */
+  .console{
+    width:420px; min-width:340px; background:var(--panel); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .console-hdr{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 12px;
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .console-hdr h2{font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin:0; color:var(--text-dim);}
+  .console-hdr .actions{display:flex; gap:6px;}
+  .console-hdr button{padding:3px 8px; font-size:10.5px;}
+  .console-filter{padding:8px 12px; border-bottom:1px solid var(--border); display:flex; gap:6px; flex-shrink:0;}
+  .console-filter input{flex:1;}
+  .console-log{flex:1; overflow-y:auto; padding:6px;}
+  .log-entry{
+    border-radius:6px; padding:6px 8px; margin-bottom:4px; font-family:var(--mono); font-size:11px;
+    border-left:3px solid var(--border); background:var(--panel-2);
+  }
+  .log-entry.dir-out{border-left-color:var(--blue);}
+  .log-entry.dir-in{border-left-color:var(--green);}
+  .log-entry.dir-rest{border-left-color:var(--accent-2);}
+  .log-entry.dir-err{border-left-color:var(--red);}
+  .log-entry.dir-log{border-left-color:var(--text-dim); opacity:.85;}
+  .log-entry .lh{display:flex; justify-content:space-between; gap:8px; cursor:pointer; align-items:center;}
+  .log-entry .lh .key{font-weight:700;}
+  .log-entry .lh .dir-out .key{color:var(--blue);}
+  .log-entry .arrow{color:var(--text-dim); font-size:10px;}
+  .log-entry .ts{color:var(--text-dim); font-size:10px; flex-shrink:0;}
+  .log-entry pre{
+    margin:6px 0 0; max-height:220px; overflow:auto; background:#0a0e13; padding:6px 8px;
+    border-radius:4px; display:none; white-space:pre-wrap; word-break:break-word;
+  }
+  .log-entry.open pre{display:block;}
+  .log-entry .lh .dirlabel{
+    font-size:9px; text-transform:uppercase; padding:1px 5px; border-radius:3px; margin-right:6px;
+    background:rgba(255,255,255,.06);
+  }
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:#2a3441; border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  .footer-note{padding:8px 12px; border-top:1px solid var(--border); font-size:10.5px; color:var(--text-dim); flex-shrink:0;}
+  .kbd{background:var(--panel-2); border:1px solid var(--border); border-radius:3px; padding:1px 5px; font-family:var(--mono);}
+
+  .range-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .range-row input[type=range]{flex:1;}
+  .range-row .val{min-width:52px; text-align:right; color:var(--text-dim); font-size:11px;}
+
+  .msg-picker{width:100%; margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span> Cogniss External Template Emulator</h1>
+  <div class="hdr-controls">
+    <label class="file-label">
+      Upload Template
+      <input type="file" id="fileInput" accept=".html,.htm">
+    </label>
+    <div class="hdr-group">
+      <label>Platform</label>
+      <select id="platformSelect">
+        <option value="web">Web</option>
+        <option value="ios">Mobile · iOS</option>
+        <option value="android">Mobile · Android</option>
+      </select>
+    </div>
+    <div class="hdr-group">
+      <label>Frame</label>
+      <select id="frameSelect">
+        <option value="phone">Phone</option>
+        <option value="full">Full width</option>
+      </select>
+    </div>
+    <div class="hdr-group">
+      <label>Latency</label>
+      <input type="range" id="latencyRange" min="0" max="1500" step="50" value="200" style="width:80px;">
+      <span id="latencyVal" style="color:var(--text-dim); font-size:11px;">200ms</span>
+    </div>
+    <div class="hdr-group">
+      <label>Fail %</label>
+      <input type="number" id="failRate" min="0" max="100" value="0" style="width:48px;">
+    </div>
+  </div>
+  <button id="reloadBtn" title="Re-inject and restart the current template">↻ Reload</button>
+  <button id="resetBtn" class="danger" title="Regenerate all mock data and restart">⟲ New Session</button>
+</header>
+
+<main>
+  <div class="sidebar">
+    <div class="tabs">
+      <div class="tab active" data-tab="session">Session</div>
+      <div class="tab" data-tab="questions">Questions</div>
+      <div class="tab" data-tab="health">Health</div>
+      <div class="tab" data-tab="tables">Tables</div>
+      <div class="tab" data-tab="theme">Theme</div>
+      <div class="tab" data-tab="manual">Send</div>
+    </div>
+    <div class="tab-content">
+
+      <!-- SESSION TAB -->
+      <div class="tab-panel active" id="panel-session">
+        <div class="hint">These become the <b>USER</b>, <b>ACTIVITY</b>, and <b>CONFIG</b> init messages the container sends on load. Edit the JSON and hit Apply, then Reload the template.</div>
+
+        <div class="field-group">
+          <h3>USER <span class="row-btns"><button data-regen="user">Regenerate</button></span></h3>
+          <textarea class="json-edit" id="edit-user"></textarea>
+          <div class="apply-row"><button class="primary" data-apply="user">Apply</button></div>
+          <div class="err-msg" id="err-user"></div>
+        </div>
+
+        <div class="field-group">
+          <h3>ACTIVITY <span class="row-btns"><button data-regen="activity">Regenerate</button></span></h3>
+          <textarea class="json-edit" id="edit-activity"></textarea>
+          <div class="apply-row"><button class="primary" data-apply="activity">Apply</button></div>
+          <div class="err-msg" id="err-activity"></div>
+        </div>
+
+        <div class="field-group">
+          <h3>CONFIG <span class="row-btns"><button data-regen="config">Clear</button></span></h3>
+          <div class="hint" style="margin-top:-4px;">activity.customConfig — the free-form settings your template reads for endpoints, flags, copy, etc.</div>
+          <textarea class="json-edit" id="edit-config"></textarea>
+          <div class="apply-row"><button class="primary" data-apply="config">Apply</button></div>
+          <div class="err-msg" id="err-config"></div>
+        </div>
+
+        <div class="field-group">
+          <h3>TEMPLATE_VARIATION</h3>
+          <textarea class="json-edit" id="edit-variation" style="height:80px;"></textarea>
+          <div class="apply-row"><button class="primary" data-apply="variation">Apply</button></div>
+          <div class="err-msg" id="err-variation"></div>
+        </div>
+
+        <div class="field-group">
+          <h3>ACTIVITY_RESPONSE (read-only view)</h3>
+          <div class="hint" style="margin-top:-4px;">Updated automatically via REST_REQUEST (put) and on QUIT/EXIT.</div>
+          <textarea class="json-edit" id="view-ar" readonly style="height:110px; opacity:.75;"></textarea>
+        </div>
+      </div>
+
+      <!-- QUESTIONS TAB -->
+      <div class="tab-panel" id="panel-questions">
+        <div class="hint">Sent as <b>QUESTIONS</b> (array) and <b>QUESTION</b> (first / linear-flow current) init messages. Pick a preset or edit the JSON directly.</div>
+        <div class="chip-row">
+          <div class="chip" data-preset="quiz">Quiz (MULTICHOICE)</div>
+          <div class="chip" data-preset="survey">Survey (mixed)</div>
+          <div class="chip" data-preset="content">Display-only content</div>
+          <div class="chip" data-preset="full">One of every type</div>
+        </div>
+        <textarea class="json-edit tall" id="edit-questions"></textarea>
+        <div class="apply-row"><button class="primary" data-apply="questions">Apply</button></div>
+        <div class="err-msg" id="err-questions"></div>
+        <div class="field-group" style="margin-top:14px;">
+          <h3>Question flow state</h3>
+          <div class="inline-row"><label>Linear index</label><span id="linearIndexView" style="color:var(--text-dim);">0</span></div>
+          <div class="inline-row"><label>Responses saved</label><span id="responsesCountView" style="color:var(--text-dim);">0</span></div>
+          <button style="width:100%;" data-action="rewind">Rewind flow to question 0</button>
+        </div>
+      </div>
+
+      <!-- HEALTH TAB -->
+      <div class="tab-panel" id="panel-health">
+        <div class="hint">Answers <b>REST_REQUEST</b> calls for model <b>AppleHealthRecord</b>. Data regenerates each time you open a New Session, or on demand below.</div>
+        <div class="range-row"><label style="min-width:120px; color:var(--text-dim); font-size:11.5px;">Days of history</label><input type="range" id="healthDays" min="1" max="60" value="14"><span class="val" id="healthDaysVal">14</span></div>
+        <div class="inline-row"><label>Steps/day range</label><input type="text" id="healthStepsRange" value="3000-13000"></div>
+        <div class="inline-row"><label>Resting HR range</label><input type="text" id="healthRhrRange" value="54-72"></div>
+        <div class="inline-row"><label>Weight start (kg)</label><input type="text" id="healthWeightStart" value="76"></div>
+        <div class="inline-row"><label>Workouts count</label><input type="text" id="healthWorkoutsCount" value="6"></div>
+        <label style="display:flex; align-items:center; gap:8px; margin:10px 0; color:var(--text-dim); font-size:11.5px;">
+          <input type="checkbox" id="healthNoDataMode"> Simulate "no HealthKit data" (empty results)
+        </label>
+        <button class="primary" style="width:100%;" id="regenHealthBtn">Regenerate health data</button>
+        <div class="field-group" style="margin-top:14px;">
+          <h3>Preview: last STEP_COUNT list</h3>
+          <textarea class="json-edit" id="view-health" readonly style="opacity:.75;"></textarea>
+        </div>
+      </div>
+
+      <!-- TABLES TAB -->
+      <div class="tab-panel" id="panel-tables">
+        <div class="hint">Answers <b>REST_REQUEST</b> calls for models <b>Table</b> and <b>TableRow</b>. Edit freely — <span class="kbd">table</span> is required on every TableRow list call, matching production behaviour.</div>
+        <textarea class="json-edit tall" id="edit-tables"></textarea>
+        <div class="apply-row"><button class="primary" data-apply="tables">Apply</button></div>
+        <div class="err-msg" id="err-tables"></div>
+      </div>
+
+      <!-- THEME TAB -->
+      <div class="tab-panel" id="panel-theme">
+        <div class="hint">Answers <b>REST_REQUEST</b> for models <b>App</b> (App-level theme) and <b>Settings</b> (platform fallback theme) — the pattern described in <span class="kbd">references/theme.md</span>.</div>
+        <textarea class="json-edit tall" id="edit-theme"></textarea>
+        <div class="apply-row"><button class="primary" data-apply="theme">Apply</button></div>
+        <div class="err-msg" id="err-theme"></div>
+      </div>
+
+      <!-- MANUAL TAB -->
+      <div class="tab-panel" id="panel-manual">
+        <div class="hint">Send an arbitrary message into the running template, as if the app were pushing it — useful for testing message ordering, retries, or edge cases.</div>
+        <select class="msg-picker" id="manualKey">
+          <option value="QUESTION">QUESTION</option>
+          <option value="QUESTIONS">QUESTIONS</option>
+          <option value="CONFIG">CONFIG</option>
+          <option value="ACTIVITY">ACTIVITY</option>
+          <option value="USER">USER</option>
+          <option value="QUESTION_RESPONSE">QUESTION_RESPONSE (result)</option>
+          <option value="REQUEST_RESPONSE">REQUEST_RESPONSE</option>
+          <option value="CUSTOM">Custom key…</option>
+        </select>
+        <input type="text" id="manualCustomKey" placeholder="custom key" style="width:100%; margin-bottom:8px; display:none;">
+        <textarea class="json-edit" id="manualData" placeholder="{ }"></textarea>
+        <div class="apply-row"><button class="primary" id="manualSendBtn">Send to template</button></div>
+        <div class="field-group" style="margin-top:14px;">
+          <h3>Simulate error</h3>
+          <button style="width:100%;" id="manualErrorBtn">Force next REST_REQUEST to fail</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="footer-note">Config auto-saves to your browser (<span class="kbd">localStorage</span>) between reloads of this file.</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="device-toolbar">
+      <span class="badge" id="readyBadge">not loaded</span>
+      <span class="badge" id="platformBadge">web</span>
+      <span class="badge" id="modeBadge">—</span>
+    </div>
+    <div class="phone" id="phoneFrame">
+      <div class="notch"></div>
+      <div class="screen">
+        <iframe id="templateFrame" title="template preview" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-modals"></iframe>
+        <div class="empty-state" id="emptyState">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          <div>Upload an External Template HTML file<br>to load it here.</div>
+        </div>
+        <div class="overlay" id="completionOverlay">
+          <div class="overlay-card">
+            <div class="icon" id="overlayIcon">✅</div>
+            <h4 id="overlayTitle">Activity Complete</h4>
+            <p id="overlayBody"></p>
+            <button data-action="restart">Restart Session</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="console">
+    <div class="console-hdr">
+      <h2>Bridge Console</h2>
+      <div class="actions">
+        <button id="expandAllBtn">Expand all</button>
+        <button id="clearLogBtn">Clear</button>
+      </div>
+    </div>
+    <div class="console-filter">
+      <input type="text" id="logFilter" placeholder="Filter by key…">
+    </div>
+    <div class="console-log" id="consoleLog"></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================== UTIL ============================== */
+  function uid(prefix){ return (prefix||'id') + '_' + Math.random().toString(36).slice(2,10); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function randFloat(min,max,dp){ dp = dp===undefined?1:dp; return parseFloat((Math.random()*(max-min)+min).toFixed(dp)); }
+  function isoDaysAgo(days, hour, min){
+    var d = new Date();
+    d.setDate(d.getDate()-days);
+    if(hour!==undefined) d.setHours(hour, min||0, 0, 0);
+    return d.toISOString();
+  }
+  function svgPlaceholder(label, w, h, bg, fg){
+    w = w||600; h = h||400; bg = bg||'#5fb3a3'; fg = fg||'#ffffff';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
+      + '<rect width="100%" height="100%" fill="'+bg+'"/>'
+      + '<text x="50%" y="50%" fill="'+fg+'" font-family="sans-serif" font-size="28" text-anchor="middle" dominant-baseline="middle">'+label+'</text>'
+      + '</svg>';
+    return 'data:image/svg+xml;base64,' + btoa(svg);
+  }
+  function fakeJWT(userId){
+    function b64(obj){ return btoa(JSON.stringify(obj)).replace(/=+$/,''); }
+    return b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:userId, iss:'cogniss-emulator', mock:true, exp: Math.floor(Date.now()/1000)+3600}) + '.mock_signature_not_valid';
+  }
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._h);
+    toast._h = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+  function pretty(obj){ try{ return JSON.stringify(obj, null, 2); }catch(e){ return String(obj); } }
+
+  /* ============================== MOCK DATA GENERATORS ============================== */
+
+  function genUser(){
+    var names = ['Jordan Rivera','Sam Okafor','Priya Chandra','Alex Novak','Morgan Lee','Taylor Brooks'];
+    var name = pick(names);
+    var uname = name.toLowerCase().replace(/\s+/g,'.');
+    return {
+      id: uid('user'),
+      displayName: name,
+      username: uname,
+      email: uname + '@example-test.com',
+      profile: { avatar: null, bio: 'Emulator test user' },
+      xp: randInt(0, 4000),
+      coins: randInt(0, 500)
+    };
+  }
+
+  function genTemplateRecord(name){
+    return {
+      id: uid('template'),
+      name: name || 'Uploaded External Template',
+      url: 'local://emulator/uploaded-template.html',
+      location: 'EXTERNAL',
+      capabilities: [],
+      config: {}
+    };
+  }
+
+  function genActivity(customConfig){
+    return {
+      id: uid('activity'),
+      topic: uid('topic'),
+      customConfig: customConfig || {},
+      engine: 'DEFAULT',
+      randomizeQuestions: false,
+      questionLimit: null,
+      textToSpeech: false
+    };
+  }
+
+  function genActivityResponse(activityId, userId, appId){
+    return {
+      id: uid('actresp'),
+      activity: activityId,
+      user: userId,
+      app: appId,
+      complete: false,
+      completeState: null,
+      score: 0,
+      customScore: null,
+      bookmark: ''
+    };
+  }
+
+  function genUserActivity(){
+    return { startCount: randInt(1,5), completeCount: randInt(0,3), favorite: false, unlocked: true };
+  }
+
+  function genContent(appId){
+    return {
+      app: { id: appId, name: 'Emulator Demo App' },
+      subjects: [
+        { id: uid('subject'), name: 'Demo Subject', topics: [] }
+      ]
+    };
+  }
+
+  function genAppId(){ return uid('app'); }
+
+  function opt(text, correct, score){
+    return { _id: uid('opt'), text: text, label: text, correct: !!correct, score: score||0, image: null, audio: null };
+  }
+
+  var QUESTION_PRESETS = {
+    quiz: function(){
+      return [
+        { text: 'Which planet is known as the Red Planet?', type: 'MULTICHOICE', options: [opt('Venus'), opt('Mars', true, 10), opt('Jupiter'), opt('Saturn')], duration: 20, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'Select all prime numbers.', type: 'MULTISELECT', options: [opt('2', true, 5), opt('3', true, 5), opt('4'), opt('7', true, 5)], duration: 25, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'The capital of Australia is Sydney.', type: 'MULTICHOICE', options: [opt('True'), opt('False', true, 10)], duration: 15, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null }
+      ];
+    },
+    survey: function(){
+      return [
+        { text: 'How are you feeling about your progress this week?', type: 'SHORT_TEXT', options: [], duration: 30, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'Rate your energy level today.', type: 'SLIDER', options: [], duration: 15, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'Which of these apply to you today?', type: 'MULTISELECT', options: [opt('Slept well'), opt('Exercised'), opt('Ate well'), opt('Stressed')], duration: 20, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'When did you last check in?', type: 'DATE_RESPONSE', options: [], duration: 15, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null }
+      ];
+    },
+    content: function(){
+      return [
+        { text: 'Welcome! This activity has no questions to answer — just content to read.', type: 'TEXT_CONTENT', options: [], duration: 10, optionDisplayType: 'DEFAULT', textDisplayType: 'LONG', image: null, audio: null, video: null },
+        { text: 'Here is a supporting image.', type: 'IMAGE_CONTENT', options: [], duration: 10, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: 'file_mock_image_1', audio: null, video: null }
+      ];
+    },
+    full: function(){
+      return [
+        { text: 'MULTICHOICE — pick one.', type: 'MULTICHOICE', options: [opt('Option A'), opt('Option B', true, 10), opt('Option C')], duration: 20, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'MULTISELECT — pick many.', type: 'MULTISELECT', options: [opt('Red', true, 5), opt('Blue'), opt('Green', true, 5)], duration: 20, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'TEXT_CONTENT — read-only.', type: 'TEXT_CONTENT', options: [], duration: 5, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'IMAGE_CONTENT — read-only image.', type: 'IMAGE_CONTENT', options: [], duration: 5, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: 'file_mock_image_2', audio: null, video: null },
+        { text: 'SHORT_TEXT — up to 250 chars.', type: 'SHORT_TEXT', options: [], duration: 30, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'LONG_TEXT — up to 5000 chars.', type: 'LONG_TEXT', options: [], duration: 45, optionDisplayType: 'DEFAULT', textDisplayType: 'LONG', image: null, audio: null, video: null },
+        { text: 'SLIDER — numeric value.', type: 'SLIDER', options: [], duration: 15, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'DATE_RESPONSE — pick a date.', type: 'DATE_RESPONSE', options: [], duration: 15, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'SEQUENCE — drag to order.', type: 'SEQUENCE', options: [opt('First'), opt('Second'), opt('Third')], duration: 30, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null },
+        { text: 'WEB — embedded web content.', type: 'WEB', options: [], duration: 30, optionDisplayType: 'DEFAULT', textDisplayType: 'DEFAULT', image: null, audio: null, video: null }
+      ];
+    }
+  };
+
+  function withIds(questions){
+    // ensure a stable local _qid for emulator bookkeeping, without altering the wire shape
+    return questions.map(function(q){ return Object.assign({}, q); });
+  }
+
+  var DEFAULT_THEME = {
+    colors: { primary: '#5fb3a3', secondary: '#e8a34c', dark: '#1b232e', light: '#ffffff' },
+    accentColors: [ {name:'PRIMARY', color:'#5fb3a3'}, {name:'SUCCESS', color:'#6bbf7a'}, {name:'WARNING', color:'#e8a34c'} ],
+    font: 'ROBOTO',
+    rounded: 'MEDIUM',
+    borderStyle: { listTile:'MEDIUM', optionTile:'MEDIUM', profileTile:'LARGE', icon:'FULL', badge:'FULL' },
+    generalBackground: { image: null, color: '#f4f6f8' },
+    featureHeader: { image: null, color: '#5fb3a3' },
+    webFeatureHeader: { image: null, color: '#5fb3a3', enabled: true },
+    appHeader: { color: '#ffffff', transparent: false },
+    activityHeader: { color: '#5fb3a3', transparent: false },
+    footerIcons: 'OUTLINE',
+    profileIcons: 'ROUND'
+  };
+
+  var DEFAULT_TABLES = [
+    {
+      id: 'table_reward_tiers',
+      name: 'Reward Tiers',
+      description: 'Point thresholds and rewards',
+      app: null,
+      columns: [ {displayName:'tierName', key:0, valueType:'string'}, {displayName:'minPoints', key:1, valueType:'number'}, {displayName:'reward', key:2, valueType:'string'} ],
+      archived: false,
+      rows: [
+        { tierName:'Bronze', minPoints:0, reward:'Sticker pack' },
+        { tierName:'Silver', minPoints:500, reward:'Water bottle' },
+        { tierName:'Gold', minPoints:1500, reward:'T-shirt' }
+      ]
+    },
+    {
+      id: 'table_clinics',
+      name: 'Clinics',
+      description: 'Partner clinic directory',
+      app: null,
+      columns: [ {displayName:'clinicName', key:0, valueType:'string'}, {displayName:'city', key:1, valueType:'string'}, {displayName:'rating', key:2, valueType:'number'} ],
+      archived: false,
+      rows: [
+        { clinicName:'Riverside Clinic', city:'Auckland', rating:4.6 },
+        { clinicName:'Harbourview Health', city:'Wellington', rating:4.8 },
+        { clinicName:'Southside Medical', city:'Christchurch', rating:4.2 }
+      ]
+    }
+  ];
+
+  var HEALTH_META = {
+    STEP_COUNT: {unit:'COUNT'}, ACTIVE_ENERGY_BURNED: {unit:'KILOCALORIES'}, BASAL_ENERGY_BURNED:{unit:'KILOCALORIES'},
+    DISTANCE_WALKING_RUNNING:{unit:'METER'}, DISTANCE_CYCLING:{unit:'METER'}, DISTANCE_SWIMMING:{unit:'METER'},
+    FLIGHTS_CLIMBED:{unit:'COUNT'}, HEART_RATE:{unit:'BPM'}, RESTING_HEART_RATE:{unit:'BPM'},
+    WALKING_HEART_RATE_AVERAGE:{unit:'BPM'}, HEART_RATE_VARIABILITY:{unit:'MILLISECOND'}, OXYGEN_SATURATION:{unit:'PERCENT'},
+    RESPIRATORY_RATE:{unit:'COUNT'}, BODY_TEMPERATURE:{unit:'CELSIUS'}, WEIGHT:{unit:'KILOGRAMS'}, WATER:{unit:'LITRE'},
+    SLEEP_SAMPLES:{unit:null}, MINDFUL_SESSION:{unit:null}, WORKOUT:{unit:null}, ELECTROCARDIOGRAM:{unit:null}
+  };
+
+  function genHealthDataset(params){
+    // params: {days, stepsRange:[min,max], rhrRange:[min,max], weightStart, workoutsCount, noData}
+    if(params.noData) return {}; // every list() will return empty items
+    var days = params.days;
+    var ds = {};
+
+    ds.STEP_COUNT = [];
+    for(var d=0; d<days; d++){
+      ds.STEP_COUNT.push({ type:'STEP_COUNT', unit:'COUNT', value: randInt(params.stepsRange[0], params.stepsRange[1]), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName: pick(['Apple Watch','iPhone']) });
+    }
+
+    ds.ACTIVE_ENERGY_BURNED = [];
+    for(d=0; d<days; d++){
+      ds.ACTIVE_ENERGY_BURNED.push({ type:'ACTIVE_ENERGY_BURNED', unit:'KILOCALORIES', value: randInt(180, 720), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'Apple Watch' });
+    }
+    ds.BASAL_ENERGY_BURNED = [];
+    for(d=0; d<days; d++){
+      ds.BASAL_ENERGY_BURNED.push({ type:'BASAL_ENERGY_BURNED', unit:'KILOCALORIES', value: randInt(1400,1900), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'iPhone' });
+    }
+    ds.DISTANCE_WALKING_RUNNING = [];
+    for(d=0; d<days; d++){
+      ds.DISTANCE_WALKING_RUNNING.push({ type:'DISTANCE_WALKING_RUNNING', unit:'METER', value: randInt(1200,9500), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'iPhone' });
+    }
+    ds.DISTANCE_CYCLING = [];
+    for(d=0; d<Math.min(days,10); d++){
+      ds.DISTANCE_CYCLING.push({ type:'DISTANCE_CYCLING', unit:'METER', value: randInt(0,15000), start: isoDaysAgo(d,7,0), end: isoDaysAgo(d,8,10), sourceName:'Apple Watch' });
+    }
+    ds.DISTANCE_SWIMMING = [];
+    for(d=0; d<Math.min(days,6); d++){
+      ds.DISTANCE_SWIMMING.push({ type:'DISTANCE_SWIMMING', unit:'METER', value: randInt(400,2000), start: isoDaysAgo(d,6,30), end: isoDaysAgo(d,7,15), sourceName:'Apple Watch' });
+    }
+    ds.FLIGHTS_CLIMBED = [];
+    for(d=0; d<days; d++){
+      ds.FLIGHTS_CLIMBED.push({ type:'FLIGHTS_CLIMBED', unit:'COUNT', value: randInt(0,18), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'iPhone' });
+    }
+
+    ds.HEART_RATE = [];
+    for(var i=0;i<40;i++){
+      var dOff = Math.floor(i/6);
+      ds.HEART_RATE.push({ type:'HEART_RATE', unit:'BPM', value: randInt(58,142), start: isoDaysAgo(dOff, randInt(6,22), randInt(0,59)), end: isoDaysAgo(dOff, randInt(6,22), randInt(0,59)), sourceName:'Apple Watch' });
+    }
+    ds.RESTING_HEART_RATE = [];
+    for(d=0; d<days; d++){
+      ds.RESTING_HEART_RATE.push({ type:'RESTING_HEART_RATE', unit:'BPM', value: randInt(params.rhrRange[0], params.rhrRange[1]), start: isoDaysAgo(d,6,0), end: isoDaysAgo(d,6,5), sourceName:'Apple Watch' });
+    }
+    ds.WALKING_HEART_RATE_AVERAGE = [];
+    for(d=0; d<days; d++){
+      ds.WALKING_HEART_RATE_AVERAGE.push({ type:'WALKING_HEART_RATE_AVERAGE', unit:'BPM', value: randInt(85,120), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'Apple Watch' });
+    }
+    ds.HEART_RATE_VARIABILITY = [];
+    for(d=0; d<days; d++){
+      ds.HEART_RATE_VARIABILITY.push({ type:'HEART_RATE_VARIABILITY', unit:'MILLISECOND', value: randInt(28,70), start: isoDaysAgo(d,7,0), end: isoDaysAgo(d,7,1), sourceName:'Apple Watch' });
+    }
+    ds.OXYGEN_SATURATION = [];
+    for(d=0; d<days; d++){
+      ds.OXYGEN_SATURATION.push({ type:'OXYGEN_SATURATION', unit:'PERCENT', value: randFloat(94,99,1), start: isoDaysAgo(d,7,0), end: isoDaysAgo(d,7,1), sourceName:'Apple Watch' });
+    }
+    ds.RESPIRATORY_RATE = [];
+    for(d=0; d<days; d++){
+      ds.RESPIRATORY_RATE.push({ type:'RESPIRATORY_RATE', unit:'COUNT', value: randInt(12,18), start: isoDaysAgo(d,3,0), end: isoDaysAgo(d,3,1), sourceName:'Apple Watch' });
+    }
+    ds.BODY_TEMPERATURE = [];
+    for(d=0; d<Math.min(days,10); d++){
+      ds.BODY_TEMPERATURE.push({ type:'BODY_TEMPERATURE', unit:'CELSIUS', value: randFloat(36.2,37.4,1), start: isoDaysAgo(d,8,0), end: isoDaysAgo(d,8,1), sourceName:'iPhone' });
+    }
+
+    ds.WEIGHT = [];
+    var w = params.weightStart;
+    for(d=days-1; d>=0; d--){
+      w += randFloat(-0.25,0.25,2);
+      ds.WEIGHT.unshift({ type:'WEIGHT', unit:'KILOGRAMS', value: parseFloat(w.toFixed(1)), start: isoDaysAgo(d,7,0), end: isoDaysAgo(d,7,0), sourceName:'Withings Scale' });
+    }
+    ds.WEIGHT.reverse(); // most recent first
+
+    ds.WATER = [];
+    for(d=0; d<days; d++){
+      ds.WATER.push({ type:'WATER', unit:'LITRE', value: randFloat(0.8,2.6,1), start: isoDaysAgo(d,0,0), end: isoDaysAgo(d,23,59), sourceName:'iPhone' });
+    }
+
+    ds.SLEEP_SAMPLES = [];
+    for(d=0; d<Math.min(days,10); d++){
+      var bedHour = 22 + randInt(0,1);
+      var inbedStart = isoDaysAgo(d+1, bedHour, randInt(0,59));
+      var wakeHour = 6 + randInt(0,2);
+      var inbedEnd = isoDaysAgo(d, wakeHour, randInt(0,59));
+      ds.SLEEP_SAMPLES.push({ type:'SLEEP_SAMPLES', classification:'INBED', start: inbedStart, end: inbedEnd, sourceName:'Apple Watch' });
+      ds.SLEEP_SAMPLES.push({ type:'SLEEP_SAMPLES', classification:'ASLEEP', start: inbedStart, end: isoDaysAgo(d, wakeHour-1, 0), sourceName:'Apple Watch' });
+      ds.SLEEP_SAMPLES.push({ type:'SLEEP_SAMPLES', classification:'AWAKE', start: isoDaysAgo(d, wakeHour-1, 0), end: inbedEnd, sourceName:'Apple Watch' });
+    }
+
+    ds.MINDFUL_SESSION = [];
+    for(d=0; d<Math.min(days,5); d++){
+      ds.MINDFUL_SESSION.push({ type:'MINDFUL_SESSION', start: isoDaysAgo(d,21,0), end: isoDaysAgo(d,21,10), sourceName:'iPhone' });
+    }
+
+    ds.WORKOUT = [];
+    var workoutTypes = ['Running','Cycling','Yoga','Strength Training','Walking','Swimming','HIIT'];
+    for(i=0;i<params.workoutsCount;i++){
+      var dOff2 = randInt(0, Math.max(days-1,0));
+      var dur = randInt(15,60);
+      var startH = randInt(6,19);
+      ds.WORKOUT.push({
+        type:'WORKOUT', activityName: pick(workoutTypes),
+        calories: randInt(120,650), distance: randInt(0,10000), averageHeartRate: randInt(95,165),
+        start: isoDaysAgo(dOff2, startH, 0), end: isoDaysAgo(dOff2, startH, dur), sourceName:'Apple Watch'
+      });
+    }
+    ds.WORKOUT.sort(function(a,b){ return new Date(b.start)-new Date(a.start); });
+
+    ds.ELECTROCARDIOGRAM = [];
+    for(i=0;i<2;i++){
+      var samples = [];
+      for(var s=0;s<30;s++){ samples.push(randFloat(-0.4,0.4,3)); }
+      ds.ELECTROCARDIOGRAM.push({ type:'ELECTROCARDIOGRAM', start: isoDaysAgo(i*3,9,0), end: isoDaysAgo(i*3,9,1), voltageMeasurements: samples, sourceName:'Apple Watch' });
+    }
+
+    return ds;
+  }
+
+  /* ============================== STATE ============================== */
+
+  var S = {
+    platform: 'web',
+    frame: 'phone',
+    latency: 200,
+    failRate: 0,
+    forceNextFail: false,
+
+    appId: null,
+    user: null,
+    templateRec: null,
+    templateVariation: {},
+    activity: null,
+    activityResponse: null,
+    userActivity: null,
+    config: {},
+    content: null,
+    questions: [],
+    theme: null,
+    tables: [],
+
+    health: {},
+    healthParams: { days:14, stepsRange:[3000,13000], rhrRange:[54,72], weightStart:76, workoutsCount:6, noData:false },
+
+    questionResponses: [],
+    linearIndex: 0,
+    hasQuit: false,
+    readySent: false,
+    dataSentToTemplate: false,
+    templateRawHtml: null,
+    fileCache: {},
+
+    logSeq: 0
+  };
+
+  var STORAGE_KEY = 'cogniss_emulator_config_v1';
+
+  function saveConfigToStorage(){
+    try{
+      var payload = {
+        user: S.user, activity: S.activity, config: S.config, questions: S.questions,
+        theme: S.theme, tables: S.tables, healthParams: S.healthParams, templateVariation: S.templateVariation,
+        platform: S.platform, frame: S.frame, latency: S.latency, failRate: S.failRate
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }catch(e){}
+  }
+  function loadConfigFromStorage(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  function freshSession(preserveTemplate){
+    var saved = loadConfigFromStorage();
+    S.appId = genAppId();
+    S.user = (saved && saved.user) || genUser();
+    S.templateRec = genTemplateRecord(S.uploadedFileName);
+    S.templateVariation = (saved && saved.templateVariation) || {};
+    S.config = (saved && saved.config) || {};
+    S.activity = (saved && saved.activity) || genActivity(S.config);
+    S.activity.customConfig = S.config;
+    S.activityResponse = genActivityResponse(S.activity.id, S.user.id, S.appId);
+    S.userActivity = genUserActivity();
+    S.content = genContent(S.appId);
+    S.questions = (saved && saved.questions) || withIds(QUESTION_PRESETS.quiz());
+    S.theme = (saved && saved.theme) || JSON.parse(JSON.stringify(DEFAULT_THEME));
+    S.tables = (saved && saved.tables) ? saved.tables : JSON.parse(JSON.stringify(DEFAULT_TABLES));
+    S.tables.forEach(function(t){ t.app = S.appId; });
+    S.healthParams = (saved && saved.healthParams) || S.healthParams;
+    S.health = genHealthDataset(S.healthParams);
+    S.questionResponses = [];
+    S.linearIndex = 0;
+    S.hasQuit = false;
+    S.readySent = false;
+    S.dataSentToTemplate = false;
+    S.fileCache = {};
+    if(saved){
+      S.platform = saved.platform || S.platform;
+      S.frame = saved.frame || S.frame;
+      S.latency = (saved.latency!==undefined)?saved.latency:S.latency;
+      S.failRate = saved.failRate || 0;
+    }
+  }
+
+  /* ============================== LOGGING ============================== */
+
+  var consoleLogEl = document.getElementById('consoleLog');
+  var logFilterEl = document.getElementById('logFilter');
+  var currentFilter = '';
+
+  function logEntry(dir, key, data, extra){
+    S.logSeq++;
+    var el = document.createElement('div');
+    el.className = 'log-entry dir-' + dir;
+    el.dataset.key = (key||'').toLowerCase();
+    var arrow = dir==='out' ? '→ template' : dir==='in' ? '← template' : dir==='rest' ? '⇄ rest' : dir==='err' ? '⚠ error' : 'ℹ log';
+    var time = new Date().toLocaleTimeString();
+    var head = document.createElement('div');
+    head.className = 'lh';
+    head.innerHTML = '<span><span class="dirlabel">'+arrow+'</span><span class="key">'+ (key||'') +'</span></span><span class="ts">'+time+'</span>';
+    var body = document.createElement('pre');
+    body.textContent = pretty(data === undefined ? {} : data) + (extra ? ('\n' + pretty(extra)) : '');
+    head.addEventListener('click', function(){ el.classList.toggle('open'); });
+    el.appendChild(head);
+    el.appendChild(body);
+    consoleLogEl.appendChild(el);
+    consoleLogEl.scrollTop = consoleLogEl.scrollHeight;
+    applyFilterToEntry(el);
+  }
+  function applyFilterToEntry(el){
+    if(!currentFilter){ el.style.display=''; return; }
+    el.style.display = el.dataset.key.indexOf(currentFilter) !== -1 ? '' : 'none';
+  }
+  logFilterEl.addEventListener('input', function(){
+    currentFilter = this.value.trim().toLowerCase();
+    Array.prototype.forEach.call(consoleLogEl.children, applyFilterToEntry);
+  });
+  document.getElementById('clearLogBtn').addEventListener('click', function(){ consoleLogEl.innerHTML=''; });
+  document.getElementById('expandAllBtn').addEventListener('click', function(){
+    var anyOpen = consoleLogEl.querySelector('.log-entry.open');
+    Array.prototype.forEach.call(consoleLogEl.children, function(el){
+      if(anyOpen) el.classList.remove('open'); else el.classList.add('open');
+    });
+  });
+
+  /* ============================== IFRAME BRIDGE ============================== */
+
+  var iframeEl = document.getElementById('templateFrame');
+  var emptyStateEl = document.getElementById('emptyState');
+  var readyBadge = document.getElementById('readyBadge');
+  var platformBadge = document.getElementById('platformBadge');
+  var modeBadge = document.getElementById('modeBadge');
+
+  function buildIframeDoc(rawHtml){
+    var shim = ''
+      + '<script>(function(){'
+      + 'try{'
+      + 'window.__EMULATOR__ = true;'
+      + (S.platform !== 'web' ? 'window.ReactNativeWebView = { postMessage: function(text){ window.parent.postMessage(text, "*"); } };' : '')
+      + '}catch(e){}'
+      + '})();<\/script>';
+    // Insert shim as early as possible, right after <head> or at document start.
+    if(/<head[^>]*>/i.test(rawHtml)){
+      return rawHtml.replace(/<head[^>]*>/i, function(m){ return m + shim; });
+    } else if(/<html[^>]*>/i.test(rawHtml)){
+      return rawHtml.replace(/<html[^>]*>/i, function(m){ return m + shim; });
+    }
+    return shim + rawHtml;
+  }
+
+  function loadTemplate(){
+    if(!S.templateRawHtml){
+      emptyStateEl.style.display='flex';
+      iframeEl.removeAttribute('srcdoc');
+      return;
+    }
+    emptyStateEl.style.display='none';
+    S.hasQuit = false;
+    S.readySent = false;
+    S.dataSentToTemplate = false;
+    S.linearIndex = 0;
+    S.questionResponses = [];
+    hideCompletionOverlay();
+    readyBadge.textContent = 'loading…';
+    readyBadge.className = 'badge pending';
+    var doc = buildIframeDoc(S.templateRawHtml);
+    iframeEl.setAttribute('srcdoc', doc);
+  }
+
+  function deliverToTemplate(text){
+    if(!iframeEl.contentWindow) return;
+    if(S.platform === 'android'){
+      try{
+        iframeEl.contentWindow.document.dispatchEvent(new MessageEvent('message', { data: text }));
+      }catch(e){
+        // Fallback if cross-realm MessageEvent construction fails in this browser
+        iframeEl.contentWindow.postMessage(text, '*');
+      }
+    } else {
+      iframeEl.contentWindow.postMessage(text, '*');
+    }
+  }
+
+  function sendToTemplate(key, data){
+    var envelope = { key: key, data: data === undefined ? null : data };
+    var text = JSON.stringify(envelope);
+    logEntry('out', key, data);
+    deliverToTemplate(text);
+  }
+
+  function sendRestResponse(id, data, error){
+    var envelope = { key: 'REQUEST_RESPONSE', data: error ? null : data, error: error || false, id: id };
+    var text = JSON.stringify(envelope);
+    logEntry('rest', 'REQUEST_RESPONSE', envelope);
+    deliverToTemplate(text);
+  }
+
+  var INIT_ORDER = {
+    web: ['API','USER','TEMPLATE','TEMPLATE_VARIATION','AUTH','ACTIVITY','ACTIVITY_RESPONSE','USER_ACTIVITY','CONFIG','CONTENT','QUESTION','QUESTIONS'],
+    ios: ['API','USER','TEMPLATE','TEMPLATE_VARIATION','AUTH','ACTIVITY','ACTIVITY_RESPONSE','CONFIG','CONTENT','QUESTIONS','QUESTION'],
+    android: ['API','USER','TEMPLATE','TEMPLATE_VARIATION','AUTH','ACTIVITY','ACTIVITY_RESPONSE','CONFIG','CONTENT','QUESTIONS','QUESTION']
+  };
+
+  function dataForInitKey(key){
+    switch(key){
+      case 'API': return 'https://api.cogniss.emulator.local';
+      case 'USER': return S.user;
+      case 'TEMPLATE': return S.templateRec;
+      case 'TEMPLATE_VARIATION': return S.templateVariation || {};
+      case 'AUTH': return fakeJWT(S.user.id);
+      case 'ACTIVITY': return S.activity;
+      case 'ACTIVITY_RESPONSE': return S.activityResponse;
+      case 'USER_ACTIVITY': return S.userActivity;
+      case 'CONFIG': return S.activity.customConfig || {};
+      case 'CONTENT': return S.content;
+      case 'QUESTION': return S.questions.length ? S.questions[S.linearIndex] || null : null;
+      case 'QUESTIONS': return S.questions;
+      default: return null;
+    }
+  }
+
+  function sendInitSequence(){
+    if(S.dataSentToTemplate) return;
+    S.dataSentToTemplate = true;
+    var order = INIT_ORDER[S.platform] || INIT_ORDER.web;
+    var i = 0;
+    function next(){
+      if(i >= order.length) return;
+      var key = order[i++];
+      sendToTemplate(key, dataForInitKey(key));
+      setTimeout(next, 15);
+    }
+    next();
+  }
+
+  /* ---- REST_REQUEST mock server ---- */
+
+  function findQuestionByIndexOrId(index){
+    if(typeof index === 'number') return S.questions[index];
+    return null;
+  }
+
+  function computeAnswerResult(payload){
+    var q = (typeof payload.index === 'number') ? S.questions[payload.index] : S.questions[S.linearIndex];
+    if(!q) return { correct:false, score:0, duration: payload.duration||0 };
+    if(q.type === 'MULTICHOICE' && payload.option){
+      var m = q.options.find(function(o){ return o._id === payload.option._id; });
+      var correctOpt = q.options.find(function(o){ return o.correct; });
+      var correct = !!(m && m.correct);
+      return { correct: correct, score: correct ? (correctOpt ? correctOpt.score||0 : 0) : 0, duration: payload.duration||0 };
+    }
+    if(q.type === 'MULTISELECT' && payload.options){
+      var submittedIds = payload.options.map(function(o){ return o._id; }).sort();
+      var correctIds = q.options.filter(function(o){ return o.correct; }).map(function(o){ return o._id; }).sort();
+      var correct2 = submittedIds.length === correctIds.length && submittedIds.every(function(id,i2){ return id === correctIds[i2]; });
+      var score2 = correct2 ? q.options.filter(function(o){return o.correct;}).reduce(function(s,o){return s+(o.score||0);},0) : 0;
+      return { correct: correct2, score: score2, duration: payload.duration||0 };
+    }
+    // Template-scored types
+    return { correct:false, score:0, duration: payload.duration||0 };
+  }
+
+  function genFileRecord(fileId){
+    if(S.fileCache[fileId]) return S.fileCache[fileId];
+    var label = String(fileId).replace(/^file_/,'').replace(/_/g,' ') || 'mock file';
+    var rec = {
+      id: fileId,
+      url: svgPlaceholder(label.slice(0,24), 640, 400, pick(['#5fb3a3','#e8a34c','#5b9dd9','#6bbf7a'])),
+      type: 'image/svg+xml',
+      filename: fileId + '.svg',
+      size: randInt(20000,400000),
+      width: 640, height: 400, duration: null
+    };
+    S.fileCache[fileId] = rec;
+    return rec;
+  }
+
+  function listWithParams(items, data){
+    var out = items.slice();
+    data = data || {};
+    // generic column/field filters (exact match) except reserved keys
+    var reserved = {table:1, sort:1, limit:1, offset:1, search:1, app:1, user:1, type:1};
+    Object.keys(data).forEach(function(k){
+      if(reserved[k]) return;
+      var val = data[k];
+      // support operator objects passed as JSON strings, e.g. '{"gte":100}'
+      var opObj = null;
+      if(typeof val === 'string'){
+        try{ var parsed = JSON.parse(val); if(parsed && typeof parsed==='object') opObj = parsed; }catch(e){}
+      }
+      out = out.filter(function(row){
+        if(opObj){
+          var rv = row[k];
+          for(var op in opObj){
+            if(op==='gt' && !(rv>opObj[op])) return false;
+            if(op==='lt' && !(rv<opObj[op])) return false;
+            if(op==='gte' && !(rv>=opObj[op])) return false;
+            if(op==='lte' && !(rv<=opObj[op])) return false;
+            if(op==='ne' && !(rv!==opObj[op])) return false;
+          }
+          return true;
+        }
+        return row[k] === val;
+      });
+    });
+    if(data.search){
+      var s = String(data.search).toLowerCase();
+      out = out.filter(function(row){
+        return (row.name && row.name.toLowerCase().indexOf(s)!==-1) || (row.description && row.description.toLowerCase().indexOf(s)!==-1);
+      });
+    }
+    if(data.sort){
+      var field = data.sort.replace(/^-/,'');
+      var desc = data.sort.charAt(0)==='-';
+      out.sort(function(a,b){
+        if(a[field] < b[field]) return desc?1:-1;
+        if(a[field] > b[field]) return desc?-1:1;
+        return 0;
+      });
+    }
+    var offset = data.offset||0;
+    var limit = data.limit;
+    if(offset) out = out.slice(offset);
+    if(limit) out = out.slice(0, limit);
+    return out;
+  }
+
+  function handleRestRequest(msg){
+    var method = msg.method, model = msg.model, data = msg.data;
+    var result = null, error = false;
+
+    function ok(d){ result = d; }
+    function fail(m){ error = m; }
+
+    switch(model){
+      case 'File':
+        if(method==='get'){ ok(genFileRecord(data)); }
+        else if(method==='post'){ var f = genFileRecord(uid('file')); if(data && data.filename) f.filename=data.filename; ok(f); }
+        else fail('Unsupported method for File in emulator: '+method);
+        break;
+
+      case 'ActivityResponse':
+        if(method==='get'){ ok(S.activityResponse); }
+        else if(method==='put'){
+          Object.assign(S.activityResponse, data);
+          ok(S.activityResponse);
+          refreshArView();
+        } else if(method==='list'){
+          var history = [S.activityResponse].concat([
+            Object.assign({}, genActivityResponse(S.activity.id, S.user.id, S.appId), {complete:true, completeState:'COMPLETE', score: randInt(40,100)}),
+            Object.assign({}, genActivityResponse(S.activity.id, S.user.id, S.appId), {complete:true, completeState:'PASS', score: randInt(60,100)})
+          ]);
+          ok({ items: listWithParams(history, data), count: history.length });
+        } else fail('Unsupported method for ActivityResponse: '+method);
+        break;
+
+      case 'QuestionResponse':
+        if(method==='post'){
+          var qr = Object.assign({ id: uid('qresp'), parentActivityResponse: S.activityResponse.id }, data);
+          S.questionResponses.push(qr);
+          ok(qr);
+          refreshQuestionFlowView();
+        } else if(method==='list'){
+          ok({ items: listWithParams(S.questionResponses, data), count: S.questionResponses.length });
+        } else if(method==='get'){
+          ok(S.questionResponses.find(function(r){return r.id===data;}) || null);
+        } else fail('Unsupported method for QuestionResponse: '+method);
+        break;
+
+      case 'Question':
+        if(method==='get'){
+          var found = S.questions.find(function(q,idx2){ return q._id===data || String(idx2)===String(data); });
+          ok(found || S.questions[0] || null);
+        } else if(method==='list'){
+          ok({ items: listWithParams(S.questions, data), count: S.questions.length });
+        } else fail('Unsupported method for Question: '+method);
+        break;
+
+      case 'Activity':
+        if(method==='get'){ ok(S.activity); }
+        else fail('Unsupported method for Activity: '+method);
+        break;
+
+      case 'UserActivity':
+        if(method==='get'){ ok(S.userActivity); }
+        else if(method==='put'){ Object.assign(S.userActivity, data); ok(S.userActivity); }
+        else if(method==='list'){ ok({items:[S.userActivity], count:1}); }
+        else fail('Unsupported method for UserActivity: '+method);
+        break;
+
+      case 'AppUser':
+        if(method==='get'){ ok({ id: S.user.id, xp: S.user.xp, coins: S.user.coins, currencies: {} }); }
+        else if(method==='put'){ Object.assign(S.user, data); ok(S.user); }
+        else fail('Unsupported method for AppUser: '+method);
+        break;
+
+      case 'Transaction':
+        if(method==='post'){
+          var tx = Object.assign({ id: uid('txn') }, data);
+          if(tx.type==='XP') S.user.xp += (tx.quantity||0);
+          if(tx.type==='COINS') S.user.coins += (tx.quantity||0);
+          ok(tx);
+          refreshUserSummary();
+        } else fail('Unsupported method for Transaction: '+method);
+        break;
+
+      case 'Event':
+        if(method==='post'){
+          var ev = Object.assign({ id: uid('event'), date: new Date().toISOString() }, data);
+          ok(ev);
+        } else fail('Unsupported method for Event: '+method);
+        break;
+
+      case 'AppleHealthRecord':
+        if(method==='list'){
+          var t = data && data.type;
+          var items = (S.health[t] || []).slice();
+          items = listWithParams(items, Object.assign({}, data, {type:undefined}));
+          ok({ items: items, count: items.length });
+        } else fail('Unsupported method for AppleHealthRecord: '+method);
+        break;
+
+      case 'Table':
+        if(method==='list'){ ok({ items: listWithParams(S.tables.map(stripRows), data), count: S.tables.length }); }
+        else if(method==='get'){ var tbl = S.tables.find(function(x){return x.id===data;}); ok(tbl ? stripRows(tbl) : null); }
+        else fail('Unsupported method for Table: '+method);
+        break;
+
+      case 'TableRow':
+        if(method==='list'){
+          if(!data || !data.table){ fail('table parameter required'); break; }
+          var table = S.tables.find(function(x){ return x.id === data.table || x.name === data.table; });
+          if(!table){ ok({items:[], count:0}); break; }
+          var rows = table.rows.map(function(r,idx3){ return Object.assign({ id: table.id+'_row_'+idx3, table: table.id, app: S.appId, index: idx3, archived:false }, r); });
+          ok({ items: listWithParams(rows, data), count: rows.length });
+        } else fail('Unsupported method for TableRow: '+method);
+        break;
+
+      case 'App':
+        if(method==='get'){ ok({ id: S.appId, name:'Emulator Demo App', theme: S.theme }); }
+        else fail('Unsupported method for App: '+method);
+        break;
+
+      case 'Settings':
+        if(method==='list'){
+          var platformTheme = { colors: { primary: S.theme.colors.primary, secondary: S.theme.colors.secondary, dark: S.theme.colors.dark }, accentColors: S.theme.accentColors, font: S.theme.font, rounded: S.theme.rounded };
+          ok({ items: [{ theme: platformTheme }], count: 1 });
+        } else fail('Unsupported method for Settings: '+method);
+        break;
+
+      default:
+        fail('Unknown model in emulator: ' + model);
+    }
+
+    return { result: result, error: error };
+  }
+
+  function stripRows(t){ var c = Object.assign({}, t); delete c.rows; return c; }
+
+  function shouldSimulateFailure(){
+    if(S.forceNextFail){ S.forceNextFail = false; return true; }
+    if(S.failRate <= 0) return false;
+    return Math.random()*100 < S.failRate;
+  }
+
+  /* ---- Handling messages FROM the template ---- */
+
+  window.addEventListener('message', function(event){
+    var raw = event.data;
+    if(typeof raw !== 'string') return;
+    var msg;
+    try{ msg = JSON.parse(raw); }catch(e){ return; }
+    if(!msg || !msg.key) return;
+
+    if(msg.key === 'REST_REQUEST'){
+      logEntry('rest', 'REST_REQUEST', msg);
+      var latency = S.latency + randInt(-30,30);
+      if(latency<0) latency=0;
+      setTimeout(function(){
+        if(shouldSimulateFailure()){
+          sendRestResponse(msg.id, null, 'Simulated failure (emulator fail-rate / forced failure)');
+          return;
+        }
+        var out = handleRestRequest(msg);
+        sendRestResponse(msg.id, out.result, out.error);
+      }, latency);
+      return;
+    }
+
+    switch(msg.key){
+      case 'READY_DYNAMIC_MEDIA':
+      case 'READY':
+      case 'START':
+        logEntry('in', msg.key, msg.data);
+        readyBadge.textContent = 'ready sent';
+        readyBadge.className = 'badge ready';
+        sendInitSequence();
+        break;
+
+      case 'NEXT_QUESTION':
+        logEntry('in', 'NEXT_QUESTION', msg.data);
+        S.linearIndex++;
+        refreshQuestionFlowView();
+        var nq = S.questions[S.linearIndex] || null;
+        sendToTemplate('QUESTION', nq);
+        break;
+
+      case 'QUESTIONS':
+        logEntry('in', 'QUESTIONS (request resend)', msg.data);
+        sendToTemplate('QUESTIONS', S.questions);
+        break;
+
+      case 'QUESTION_RESPONSE':
+        logEntry('in', 'QUESTION_RESPONSE', msg.data);
+        var payload = msg.data || {};
+        var resultObj = computeAnswerResult(payload);
+        // store as a QuestionResponse record too
+        var qIdx = (typeof payload.index === 'number') ? payload.index : S.linearIndex;
+        var qr2 = Object.assign({ id: uid('qresp'), question: (S.questions[qIdx]||{})._id, parentActivityResponse: S.activityResponse.id }, payload, resultObj);
+        S.questionResponses.push(qr2);
+        refreshQuestionFlowView();
+        sendToTemplate('QUESTION_RESPONSE', resultObj);
+        if(typeof payload.index !== 'number'){
+          // linear flow: advance and also push the next question, matching SKILL.md narrative
+          S.linearIndex++;
+          refreshQuestionFlowView();
+          var next = S.questions[S.linearIndex] || null;
+          if(next) sendToTemplate('QUESTION', next);
+        }
+        break;
+
+      case 'QUIT':
+        logEntry('in', 'QUIT', msg.data);
+        if(S.hasQuit){ toast('Ignored duplicate QUIT — template should guard against sending this twice.'); return; }
+        S.hasQuit = true;
+        Object.assign(S.activityResponse, { complete:true, completeState: (msg.data&&msg.data.completeState)||'COMPLETE', customScore: msg.data&&msg.data.customScore!==undefined?msg.data.customScore:S.activityResponse.customScore });
+        refreshArView();
+        showCompletionOverlay('QUIT', msg.data||{});
+        break;
+
+      case 'EXIT':
+        logEntry('in', 'EXIT', msg.data);
+        if(S.hasQuit){ toast('Ignored duplicate EXIT.'); return; }
+        S.hasQuit = true;
+        showCompletionOverlay('EXIT', {});
+        break;
+
+      case 'LAUNCH_ACTIVITY':
+        logEntry('in', 'LAUNCH_ACTIVITY', msg.data);
+        toast('Template requested LAUNCH_ACTIVITY → ' + (msg.data && msg.data.id));
+        break;
+
+      case 'OPEN_SUBJECT':
+        logEntry('in', 'OPEN_SUBJECT', msg.data);
+        toast('Template requested OPEN_SUBJECT → ' + (msg.data && msg.data.id));
+        break;
+
+      case 'LOG':
+        logEntry('log', 'LOG', msg.data);
+        break;
+
+      case 'ERROR':
+        logEntry('err', 'ERROR', msg.data);
+        toast('Template sent ERROR: ' + (msg.data && msg.data.message ? msg.data.message : JSON.stringify(msg.data)));
+        break;
+
+      default:
+        logEntry('in', msg.key + ' (unrecognized)', msg.data);
+    }
+  });
+
+  /* ============================== COMPLETION OVERLAY ============================== */
+
+  var overlay = document.getElementById('completionOverlay');
+  function showCompletionOverlay(source, data){
+    var icon = document.getElementById('overlayIcon');
+    var title = document.getElementById('overlayTitle');
+    var body = document.getElementById('overlayBody');
+    if(source === 'QUIT'){
+      var state = data.completeState || 'COMPLETE';
+      icon.textContent = state==='PASS' ? '🎉' : state==='FAIL' ? '❌' : '✅';
+      title.textContent = 'QUIT received';
+      body.innerHTML = 'completeState: <b class="state-'+state.toLowerCase()+'">'+state+'</b>'
+        + (data.customScore!==undefined ? '<br>customScore: '+data.customScore : '')
+        + '<br><span style="color:var(--text-dim)">ActivityResponse marked complete.</span>';
+    } else {
+      var isComplete = S.activityResponse.complete === true;
+      icon.textContent = isComplete ? '✅' : '⚠️';
+      title.textContent = 'EXIT received';
+      body.innerHTML = isComplete
+        ? 'ActivityResponse.complete was already <b class="state-complete">true</b> — container proceeds with completion.'
+        : '<b style="color:var(--red)">ActivityResponse.complete is still false.</b><br>Real container treats this as abandonment. Did the template PUT the ActivityResponse before sending EXIT?';
+    }
+    overlay.classList.add('show');
+  }
+  function hideCompletionOverlay(){ overlay.classList.remove('show'); }
+  overlay.querySelector('[data-action="restart"]').addEventListener('click', function(){
+    hideCompletionOverlay();
+    loadTemplate();
+  });
+
+  /* ============================== VIEWS / SYNC ============================== */
+
+  function refreshArView(){ document.getElementById('view-ar').value = pretty(S.activityResponse); }
+  function refreshQuestionFlowView(){
+    document.getElementById('linearIndexView').textContent = S.linearIndex;
+    document.getElementById('responsesCountView').textContent = S.questionResponses.length;
+  }
+  function refreshUserSummary(){ /* placeholder for future user-summary UI */ }
+  function refreshHealthPreview(){
+    document.getElementById('view-health').value = pretty((S.health.STEP_COUNT||[]).slice(0,5));
+  }
+
+  function refreshAllEditors(){
+    document.getElementById('edit-user').value = pretty(S.user);
+    document.getElementById('edit-activity').value = pretty(S.activity);
+    document.getElementById('edit-config').value = pretty(S.config);
+    document.getElementById('edit-variation').value = pretty(S.templateVariation);
+    document.getElementById('edit-questions').value = pretty(S.questions);
+    document.getElementById('edit-tables').value = pretty(S.tables);
+    document.getElementById('edit-theme').value = pretty(S.theme);
+    refreshArView();
+    refreshQuestionFlowView();
+    refreshHealthPreview();
+    document.getElementById('healthDays').value = S.healthParams.days;
+    document.getElementById('healthDaysVal').textContent = S.healthParams.days;
+    document.getElementById('healthStepsRange').value = S.healthParams.stepsRange.join('-');
+    document.getElementById('healthRhrRange').value = S.healthParams.rhrRange.join('-');
+    document.getElementById('healthWeightStart').value = S.healthParams.weightStart;
+    document.getElementById('healthWorkoutsCount').value = S.healthParams.workoutsCount;
+    document.getElementById('healthNoDataMode').checked = !!S.healthParams.noData;
+    document.getElementById('platformSelect').value = S.platform;
+    document.getElementById('frameSelect').value = S.frame;
+    document.getElementById('latencyRange').value = S.latency;
+    document.getElementById('latencyVal').textContent = S.latency + 'ms';
+    document.getElementById('failRate').value = S.failRate;
+    platformBadge.textContent = S.platform;
+    updateFrameClass();
+  }
+
+  function updateFrameClass(){
+    document.getElementById('stage').classList.toggle('fullwidth', S.frame==='full');
+  }
+
+  /* ============================== UI WIRING ============================== */
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+      tab.classList.add('active');
+      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // File upload
+  document.getElementById('fileInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    S.uploadedFileName = file.name;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      S.templateRawHtml = ev.target.result;
+      S.templateRec = genTemplateRecord(file.name);
+      loadTemplate();
+      toast('Loaded ' + file.name);
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('reloadBtn').addEventListener('click', function(){
+    if(!S.templateRawHtml){ toast('Upload a template first.'); return; }
+    loadTemplate();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    freshSession();
+    refreshAllEditors();
+    consoleLogEl.innerHTML = '';
+    loadTemplate();
+    toast('New session started — all mock data regenerated.');
+  });
+
+  document.getElementById('platformSelect').addEventListener('change', function(){
+    S.platform = this.value;
+    platformBadge.textContent = S.platform;
+    saveConfigToStorage();
+    toast('Platform set to ' + S.platform + ' — reload the template to apply.');
+  });
+  document.getElementById('frameSelect').addEventListener('change', function(){
+    S.frame = this.value; updateFrameClass(); saveConfigToStorage();
+  });
+  document.getElementById('latencyRange').addEventListener('input', function(){
+    S.latency = parseInt(this.value,10);
+    document.getElementById('latencyVal').textContent = S.latency + 'ms';
+    saveConfigToStorage();
+  });
+  document.getElementById('failRate').addEventListener('change', function(){
+    S.failRate = Math.max(0, Math.min(100, parseInt(this.value,10)||0));
+    this.value = S.failRate;
+    saveConfigToStorage();
+  });
+
+  // Generic JSON apply/regen wiring
+  function showErr(id, msg){ var e=document.getElementById('err-'+id); e.textContent=msg; e.style.display = msg?'block':'none'; }
+
+  document.querySelectorAll('[data-apply]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.dataset.apply;
+      var map = { user:'edit-user', activity:'edit-activity', config:'edit-config', variation:'edit-variation', questions:'edit-questions', tables:'edit-tables', theme:'edit-theme' };
+      var ta = document.getElementById(map[key]);
+      try{
+        var parsed = JSON.parse(ta.value);
+        showErr(key, '');
+        if(key==='user') S.user = parsed;
+        if(key==='activity'){ S.activity = parsed; S.config = parsed.customConfig || S.config; }
+        if(key==='config'){ S.config = parsed; S.activity.customConfig = parsed; document.getElementById('edit-activity').value = pretty(S.activity); }
+        if(key==='variation') S.templateVariation = parsed;
+        if(key==='questions') S.questions = parsed;
+        if(key==='tables') S.tables = parsed;
+        if(key==='theme') S.theme = parsed;
+        saveConfigToStorage();
+        toast('Applied. Reload the template to send updated data.');
+      }catch(e){
+        showErr(key, 'Invalid JSON: ' + e.message);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-regen]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.dataset.regen;
+      if(key==='user'){ S.user = genUser(); document.getElementById('edit-user').value = pretty(S.user); }
+      if(key==='activity'){ S.activity = genActivity(S.config); document.getElementById('edit-activity').value = pretty(S.activity); }
+      if(key==='config'){ S.config = {}; S.activity.customConfig = {}; document.getElementById('edit-config').value = '{}'; document.getElementById('edit-activity').value = pretty(S.activity); }
+      saveConfigToStorage();
+    });
+  });
+
+  // Question presets
+  document.querySelectorAll('.chip[data-preset]').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var preset = chip.dataset.preset;
+      S.questions = withIds(QUESTION_PRESETS[preset]());
+      document.getElementById('edit-questions').value = pretty(S.questions);
+      saveConfigToStorage();
+      toast('Loaded "'+preset+'" preset. Hit Apply, then Reload.');
+    });
+  });
+
+  document.querySelector('[data-action="rewind"]').addEventListener('click', function(){
+    S.linearIndex = 0; refreshQuestionFlowView(); toast('Flow index reset to 0 (does not resend to a live template).');
+  });
+
+  // Health tab
+  document.getElementById('healthDays').addEventListener('input', function(){
+    document.getElementById('healthDaysVal').textContent = this.value;
+  });
+  document.getElementById('regenHealthBtn').addEventListener('click', function(){
+    var daysV = parseInt(document.getElementById('healthDays').value,10);
+    var stepsParts = document.getElementById('healthStepsRange').value.split('-').map(function(x){return parseInt(x,10);});
+    var rhrParts = document.getElementById('healthRhrRange').value.split('-').map(function(x){return parseInt(x,10);});
+    S.healthParams = {
+      days: daysV,
+      stepsRange: (stepsParts.length===2 && !isNaN(stepsParts[0])) ? stepsParts : [3000,13000],
+      rhrRange: (rhrParts.length===2 && !isNaN(rhrParts[0])) ? rhrParts : [54,72],
+      weightStart: parseFloat(document.getElementById('healthWeightStart').value)||76,
+      workoutsCount: parseInt(document.getElementById('healthWorkoutsCount').value,10)||6,
+      noData: document.getElementById('healthNoDataMode').checked
+    };
+    S.health = genHealthDataset(S.healthParams);
+    refreshHealthPreview();
+    saveConfigToStorage();
+    toast('Health data regenerated. Templates fetching AppleHealthRecord will see the new data on next REST_REQUEST.');
+  });
+
+  // Manual send tab
+  document.getElementById('manualKey').addEventListener('change', function(){
+    document.getElementById('manualCustomKey').style.display = this.value==='CUSTOM' ? 'block' : 'none';
+  });
+  document.getElementById('manualSendBtn').addEventListener('click', function(){
+    var keySel = document.getElementById('manualKey').value;
+    var key = keySel==='CUSTOM' ? (document.getElementById('manualCustomKey').value||'CUSTOM').trim() : keySel;
+    var raw = document.getElementById('manualData').value.trim();
+    var data = null;
+    if(raw){
+      try{ data = JSON.parse(raw); }catch(e){ toast('Invalid JSON payload: ' + e.message); return; }
+    }
+    if(!S.templateRawHtml){ toast('Upload a template first.'); return; }
+    sendToTemplate(key, data);
+  });
+  document.getElementById('manualErrorBtn').addEventListener('click', function(){
+    S.forceNextFail = true;
+    toast('The next REST_REQUEST from the template will fail.');
+  });
+
+  /* ============================== INIT ============================== */
+
+  freshSession();
+  refreshAllEditors();
+
+  // Seed some helpful defaults into manual-send textarea
+  document.getElementById('manualData').value = pretty({ example: true });
+
+})();
+</script>
+</body>
+</html>
