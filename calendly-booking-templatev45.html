@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Book an Appointment</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- Calendly inline widget rendered as a direct iframe (no JS widget)
+     to prevent mobile WebView from opening the external browser -->
+<style>
+/*
+ * Accent colour is set at runtime via JS:
+ *   document.documentElement.style.setProperty('--accent', primaryFromApp)
+ *
+ * --accent-lt and --accent-dk are derived in JS from the same source.
+ * There is NO hardcoded brand colour anywhere in this file.
+ * Every interactive element references var(--accent).
+ */
+:root {
+  /* Accent — overwritten at runtime. Transparent until theme loads so
+     nothing renders in the wrong colour. */
+  --accent:    transparent;
+  --accent-lt: transparent;
+  --accent-dk: transparent;
+
+  /* Neutrals — never change per app */
+  --ink:        #1a1927;
+  --ink-2:      #58566e;
+  --ink-3:      #a09eb8;
+  --bg:         #f5f4f1;
+  --surface:    #ffffff;
+  --border:     rgba(26,25,39,0.10);
+  --success:    #22a06b;
+  --success-bg: #e8f8f0;
+  --danger:     #d44;
+  --danger-bg:  #fdeaea;
+
+  /* Shape */
+  --r:    12px;
+  --r-sm: 8px;
+
+  /* Elevation */
+  --sh: 0 2px 14px rgba(26,25,39,0.07);
+
+  /* Layout */
+  --hh: 72px;   /* header height */
+}
+
+/* ─── Reset ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Header ────────────────────────────────────────────── */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--hh);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--sh);
+  z-index: 200;
+}
+.close-x {
+  position: absolute; bottom: 10px; right: 14px;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--ink-2);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.close-x:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+/* ─── Shell ─────────────────────────────────────────────── */
+.shell {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(var(--hh) + 28px) 18px 56px;
+  min-height: 100vh;
+}
+@media (min-width: 600px) { .shell { padding-inline: 28px; } }
+@media (min-width: 900px) { .shell { padding-inline: 36px; } }
+
+/* ─── Screen toggle ─────────────────────────────────────── */
+.scr { display: none !important; }
+.scr.on { display: block !important; }
+#scr-loading.on {
+  display: flex !important;
+  flex-direction: column; align-items: center; justify-content: center;
+  position: fixed; inset: 0; gap: 12px;
+  background: var(--bg);
+}
+
+/* ─── Spinner ───────────────────────────────────────────── */
+.spin {
+  width: 34px; height: 34px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: rot .75s linear infinite;
+}
+.spin-lbl { font-size: 13px; color: var(--ink-2); }
+
+/* ─── Hero ──────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  margin-bottom: 22px;
+  animation: fd .4s ease both;
+}
+.hero-icon {
+  width: 54px; height: 54px;
+  background: var(--accent);
+  border-radius: 15px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 4px 16px var(--accent-lt);
+}
+.hero-icon svg { width: 26px; height: 26px; fill: #fff; }
+.hero h1 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(19px, 5vw, 25px);
+  font-weight: 700;
+  letter-spacing: -.3px;
+  color: var(--ink);
+}
+.hero p { margin-top: 5px; font-size: 13px; color: var(--ink-2); }
+
+/* ─── Tabs ──────────────────────────────────────────────── */
+.tabs {
+  display: flex; gap: 4px;
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  padding: 4px;
+  margin-bottom: 18px;
+  box-shadow: var(--sh);
+}
+.tab {
+  flex: 1; padding: 9px 6px;
+  border: none; border-radius: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; background: none; color: var(--ink-2);
+  transition: background .15s, color .15s;
+}
+.tab.on { background: var(--accent); color: #fff; }
+
+/* ─── Card ──────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--sh);
+  margin-bottom: 12px;
+  animation: fu .32s ease both;
+}
+.card-lbl {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--ink-3); margin-bottom: 13px;
+}
+
+/* ─── Event list ────────────────────────────────────────── */
+.ev-list { display: flex; flex-direction: column; gap: 9px; }
+.ev-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .15s;
+}
+.ev-row:hover { border-color: var(--accent); background: var(--accent-lt); transform: translateY(-1px); }
+.ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--accent); }
+.ev-info { flex: 1; min-width: 0; }
+.ev-name { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 15px; }
+.ev-meta { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.ev-chev { color: var(--ink-3); font-size: 18px; }
+
+/* ─── Widget ────────────────────────────────────────────── */
+#v-widget { display: none; }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-bottom: 11px; padding: 0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px; color: var(--ink-2);
+  background: none; border: none; cursor: pointer;
+  transition: color .15s;
+}
+.back-btn:hover { color: var(--accent); }
+.w-wrap { position: relative; }
+.w-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  background: var(--bg); border-radius: var(--r);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 11px; min-height: 280px;
+}
+.w-overlay p { font-size: 13px; color: var(--ink-2); }
+.w-overlay.gone { display: none; }
+#cal-widget {
+  opacity: 0; transition: opacity .28s ease;
+  width: 100%;
+  height: calc(100dvh - 190px);
+  min-height: 500px;
+}
+#cal-widget.show { opacity: 1; }
+.calendly-inline-widget {
+  width: 100% !important; height: 100% !important;
+  border-radius: var(--r) !important; overflow: hidden;
+}
+
+/* ─── Confirmed ─────────────────────────────────────────── */
+#v-confirmed { display: none; }
+.ok-icon {
+  width: 62px; height: 62px; border-radius: 50%;
+  background: var(--success-bg);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 13px;
+  animation: pop .32s cubic-bezier(.36,.07,.19,.97) both;
+}
+.ok-icon svg { width: 28px; height: 28px; }
+.ok-title {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 20px; font-weight: 700;
+  text-align: center; margin-bottom: 3px;
+}
+.ok-sub { font-size: 13px; color: var(--ink-2); text-align: center; margin-bottom: 18px; }
+.d-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.d-row:last-child { border-bottom: none; }
+.d-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.d-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-3); }
+.d-val { font-size: 14px; font-weight: 500; color: var(--ink); margin-top: 2px; }
+
+/* ─── Buttons ───────────────────────────────────────────── */
+.btn {
+  display: block; width: 100%; padding: 13px;
+  border: none; border-radius: var(--r-sm);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all .17s; text-align: center; margin-top: 9px;
+}
+.btn-p { background: var(--accent); color: #fff; box-shadow: 0 3px 12px var(--accent-lt); }
+.btn-p:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.btn-g { background: var(--bg); color: var(--ink); border: 1.5px solid var(--border); }
+.btn-g:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── Appointments ──────────────────────────────────────── */
+#tab-appts { display: none; }
+.info-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--accent-lt);
+  border-radius: var(--r-sm); padding: 10px 13px;
+  margin-bottom: 14px;
+  font-size: 12px; color: var(--ink-2); line-height: 1.5;
+}
+.appt-card {
+  border-radius: var(--r-sm); padding: 13px 14px;
+  border: 1.5px solid var(--border); background: var(--bg);
+  margin-bottom: 9px;
+}
+.appt-card.upcoming { border-color: var(--accent); background: var(--accent-lt); }
+.appt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; padding: 2px 8px; border-radius: 20px;
+}
+.b-up  { background: var(--accent); color: #fff; }
+.b-pst { background: var(--border); color: var(--ink-2); }
+.b-can { background: var(--danger-bg); color: var(--danger); }
+.ltag { font-size: 10px; font-weight: 700; }
+.lt-live  { color: var(--success); }
+.lt-re    { color: #c07800; }
+.lt-saved { color: var(--ink-3); }
+.appt-name { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 600; }
+.appt-meta { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+.can-block {
+  margin-top: 9px; padding: 8px 10px;
+  background: var(--danger-bg); border-radius: 6px;
+  font-size: 12px; color: var(--danger);
+}
+.can-block strong { font-weight: 600; }
+.can-reason { margin-top: 3px; color: var(--ink-2); }
+.can-note   { margin-top: 4px; font-size: 11px; color: var(--ink-3); }
+
+/* ─── States ────────────────────────────────────────────── */
+.empty { text-align: center; padding: 30px 18px; color: var(--ink-3); }
+.empty-ico { font-size: 30px; margin-bottom: 9px; }
+.empty p { font-size: 13px; }
+.err-box {
+  background: var(--danger-bg); color: var(--danger);
+  border-radius: var(--r-sm); padding: 10px 12px;
+  font-size: 13px; margin-bottom: 11px;
+}
+.ver { position: fixed; bottom: 7px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--ink-3); pointer-events: none; z-index: 50; }
+
+/* ─── Keyframes ─────────────────────────────────────────── */
+@keyframes rot { to { transform: rotate(360deg); } }
+@keyframes fu  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+@keyframes fd  { from { opacity:0; transform:translateY(-7px); } to { opacity:1; transform:none; } }
+@keyframes pop { 0%{transform:scale(.5);opacity:0;} 80%{transform:scale(1.08);} 100%{transform:scale(1);opacity:1;} }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="close-x" onclick="done()">&#x2715;</button>
+</div>
+
+<div class="shell">
+
+  <!-- Loading -->
+  <div id="scr-loading" class="scr on">
+    <div class="spin"></div>
+    <p class="spin-lbl">Loading&hellip;</p>
+  </div>
+
+  <!-- Error -->
+  <div id="scr-error" class="scr">
+    <div class="hero">
+      <div class="hero-icon" style="background:var(--danger)">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <h1>Setup Error</h1>
+      <p id="err-msg">Could not load template.</p>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="scr-main" class="scr">
+
+    <div class="hero">
+      <div class="hero-icon">
+        <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.9 4 3 4.9 3 6v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>
+      </div>
+      <h1 id="ttl">Book an Appointment</h1>
+      <p id="sub">Select a time that works for you</p>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab on" id="t-book"  onclick="tab('book')">&#128197; Book</button>
+      <button class="tab"    id="t-appts" onclick="tab('appts')">&#128203; My Appointments</button>
+    </nav>
+
+    <!-- Book tab -->
+    <div id="tab-book">
+
+      <div id="v-events">
+        <div class="card">
+          <div class="card-lbl">Choose appointment type</div>
+          <div class="ev-list" id="ev-list">
+            <div class="empty"><div class="spin" style="margin:0 auto"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="v-widget">
+        <button class="back-btn" onclick="view('events')">&#8592; Back to types</button>
+        <div class="w-wrap">
+          <div class="w-overlay" id="w-overlay">
+            <div class="spin"></div>
+            <p>Loading calendar&hellip;</p>
+          </div>
+          <iframe
+            id="cal-iframe"
+            src=""
+            frameborder="0"
+            allowtransparency="true"
+            allow="payment"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            style="width:100%;height:calc(100dvh - 190px);min-height:500px;border:none;border-radius:var(--r);display:block;opacity:0;transition:opacity .28s ease;"
+          ></iframe>
+        </div>
+      </div>
+
+      <div id="v-confirmed">
+        <div class="card">
+          <div class="ok-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22a06b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <p class="ok-title">You&rsquo;re booked!</p>
+          <p class="ok-sub">A confirmation has been sent to your email.</p>
+          <div id="conf-rows"></div>
+        </div>
+        <button class="btn btn-g" onclick="resetBook()">Book another appointment</button>
+        <button class="btn btn-p" onclick="done()">Done</button>
+      </div>
+
+    </div>
+
+    <!-- Appointments tab -->
+    <div id="tab-appts">
+      <div class="info-note">
+        <span>&#x2139;&#xFE0F;</span>
+        <span>To reschedule or cancel, check your booking confirmation email or contact the business directly.</span>
+      </div>
+      <div id="al-loading" style="text-align:center;padding:32px 0">
+        <div class="spin" style="margin:0 auto 11px"></div>
+        <p class="spin-lbl">Loading appointments&hellip;</p>
+      </div>
+      <div id="al-content" style="display:none">
+        <div id="c-up" class="card" style="display:none">
+          <div class="card-lbl">Upcoming</div>
+          <div id="a-up"></div>
+        </div>
+        <div id="c-past" class="card" style="display:none">
+          <div class="card-lbl">Past &amp; Cancelled</div>
+          <div id="a-past"></div>
+        </div>
+        <div id="a-empty" class="empty" style="display:none">
+          <div class="empty-ico">&#128197;</div>
+          <p>No bookings yet. Head to the Book tab to get started.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="ver">v4.0.0</p>
+
+<script>
+'use strict'
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE LINK INTERCEPTION
+   On mobile the WebView intercepts any navigation request
+   (href clicks, window.location changes) and opens them in
+   the device browser — or worse, navigates the WebView away
+   from the template entirely.
+
+   Fix 1: capture ALL <a> clicks at document level.
+   - Links within our own origin: allow (shouldn't exist, but safe)
+   - Any external href: preventDefault + do nothing
+     (Calendly confirmation links are inside the Calendly iframe,
+      not our document, so they are unaffected)
+
+   Fix 2: after the Calendly inline widget initialises, find its
+   <iframe> and add sandbox="allow-scripts allow-same-origin
+   allow-forms allow-popups" so that any navigation the widget
+   tries to trigger stays contained within the iframe rather than
+   propagating to the WebView.
+
+   Fix 3: guard the postMessage listener so that malformed or
+   unexpected messages never call navigation.goBack() on mobile.
+   (platform-compat.md: any unrecognised message may trigger goBack)
+══════════════════════════════════════════════════════════ */
+document.addEventListener('click', function(e) {
+  var a = e.target.closest('a[href]')
+  if (!a) return
+  var href = a.getAttribute('href') || ''
+  // Allow in-page anchors
+  if (href.charAt(0) === '#') return
+  // Allow same-origin relative links (shouldn't exist in this template)
+  if (href.charAt(0) === '/' && href.charAt(1) !== '/') return
+  // Block everything else — external links must not navigate the WebView
+  e.preventDefault()
+  e.stopPropagation()
+}, true)  // useCapture=true so we get it before any other handler
+
+/* sandboxCalendlyIframe: removed — iframe is now declared directly
+   in HTML with sandbox attribute; no MutationObserver needed. */
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+function esc(v) {
+  if (v == null) return ''
+  return String(v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#x27;')
+}
+
+/* Validate colour strings before writing to CSS — prevents CSS injection */
+function validColor(v) {
+  if (!v || typeof v !== 'string') return null
+  var s = v.trim()
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s)) return s
+  if (/^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/.test(s)) return s
+  if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/.test(s)) return s
+  return null
+}
+
+/* Convert hex to rgba string (for derived --accent-lt) */
+function hexRgba(hex, a) {
+  var r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16)
+  return 'rgba('+r+','+g+','+b+','+a+')'
+}
+
+/* Darken hex by percent (negative = darken) */
+function hexShade(hex, p) {
+  var clamp = function(n){ return Math.min(255,Math.max(0,Math.round(n))) }
+  var r=clamp(parseInt(hex.slice(1,3),16)*(1+p))
+  var g=clamp(parseInt(hex.slice(3,5),16)*(1+p))
+  var b=clamp(parseInt(hex.slice(5,7),16)*(1+p))
+  return '#'+[r,g,b].map(function(x){return x.toString(16).padStart(2,'0')}).join('')
+}
+
+/* Apply accent colour — called once we have the value from the App theme */
+function setAccent(primary) {
+  var c = validColor(primary)
+  if (!c) return
+  var root = document.documentElement
+  root.style.setProperty('--accent',    c)
+  root.style.setProperty('--accent-lt', hexRgba(c, 0.13))
+  root.style.setProperty('--accent-dk', hexShade(c, -0.18))
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+var ST = {
+  CONFIG: {}, USER: {}, ACTIVITY: {},
+  ACTIVITY_RESPONSE: null,
+  QUESTIONS: [],
+  got: new Set()
+}
+
+/*
+ * REQUIRED: the 4 messages that always arrive reliably on both platforms.
+ *
+ * ACTIVITY_RESPONSE is NOT in REQUIRED.
+ * Per message-bridge.md it DOES arrive (always, on both web and mobile),
+ * but it arrives after ACTIVITY in a fixed sequence — and since we only
+ * need it for the theme fetch (which runs as a non-blocking side effect),
+ * we don't gate the whole boot on it. This eliminates the spinner-hang bug.
+ */
+var REQUIRED = ['CONFIG','USER','ACTIVITY','QUESTIONS']
+var booted = false
+
+/* ══════════════════════════════════════════════════════════
+   BRIDGE
+══════════════════════════════════════════════════════════ */
+var isNative = typeof window.ReactNativeWebView !== 'undefined'
+
+/* REST_REQUEST must be built with fields at top level (per api-access.md) */
+var _rqId = 0
+var _rq   = {}
+
+function restRequest(method, model, data) {
+  return new Promise(function(resolve, reject) {
+    var id  = 'rq-' + (++_rqId)
+    _rq[id] = { resolve: resolve, reject: reject }
+    var msg = JSON.stringify({
+      key: 'REST_REQUEST', method: method, model: model,
+      data: data || null, id: id, specialParams: null
+    })
+    if (isNative) window.ReactNativeWebView.postMessage(msg)
+    else window.parent.postMessage(msg, '*')
+  })
+}
+
+function postToApp(key, data) {
+  /* Note: REST_REQUEST must NOT use this helper — fields must be top-level */
+  var msg = JSON.stringify({ key: key, data: data || null })
+  if (isNative) window.ReactNativeWebView.postMessage(msg)
+  else window.parent.postMessage(msg, '*')
+}
+
+function onMsg(e) {
+  try {
+    /* Ignore messages from our own window (e.g. devtools) */
+    if (e.source === window) return
+
+    var raw = e.data
+    /* Mobile RN delivers parsed objects; web delivers strings.
+       Normalise without re-parsing an already-parsed object. */
+    var d = (typeof raw === 'string') ? JSON.parse(raw) : raw
+    if (!d || typeof d !== 'object') return
+
+    /* Calendly widget postMessage events */
+    if (typeof d.event === 'string' && d.event.indexOf('calendly.') === 0) {
+      onCalendlyMsg(d); return
+    }
+
+    /* Cogniss bridge messages — must have a string key */
+    if (typeof d.key === 'string') {
+      onBridgeMsg(d); return
+    }
+
+    /* Silently drop anything else — do NOT let unknown messages
+       propagate; on mobile RN an unhandled postMessage can trigger
+       navigation.goBack() (platform-compat.md). */
+  } catch (_) {
+    /* JSON parse errors are normal — other iframes on the page
+       (e.g. Calendly) send non-JSON messages. Silently ignore. */
+  }
+}
+/* Register on both document (Android) and window (iOS + web) */
+document.addEventListener('message', onMsg)
+window.addEventListener('message', onMsg)
+
+/* Fire READY_DYNAMIC_MEDIA to start the init sequence */
+postToApp('READY_DYNAMIC_MEDIA')
+
+function onBridgeMsg(m) {
+  var k = m.key, v = m.data
+  switch (k) {
+    case 'CONFIG':
+      ST.CONFIG = v || {}
+      mark('CONFIG')
+      break
+
+    case 'USER':
+      ST.USER = v || {}
+      mark('USER')
+      break
+
+    case 'ACTIVITY':
+      ST.ACTIVITY = v || {}
+      mark('ACTIVITY')
+      break
+
+    case 'ACTIVITY_RESPONSE':
+      /*
+       * Store ACTIVITY_RESPONSE whenever it arrives.
+       * Per message-bridge.md it always comes after ACTIVITY in the sequence.
+       * If boot has already fired, trigger the theme fetch now.
+       * If boot hasn't fired yet, the theme fetch will run at boot time.
+       */
+      ST.ACTIVITY_RESPONSE = v || {}
+      ST.got.add('ACTIVITY_RESPONSE')
+      if (booted) fetchAndApplyTheme()
+      break
+
+    case 'QUESTIONS':
+      ST.QUESTIONS = Array.isArray(v) ? v : []
+      mark('QUESTIONS')
+      break
+
+    case 'QUESTION':
+      /* Some platform versions send QUESTION before/instead of QUESTIONS */
+      if (!ST.got.has('QUESTIONS')) {
+        ST.QUESTIONS = v ? [v] : []
+        mark('QUESTIONS')
+      }
+      break
+
+    case 'REQUEST_RESPONSE':
+      var p = _rq[m.id]
+      if (p) {
+        delete _rq[m.id]
+        if (m.error) p.reject(new Error(m.error))
+        else p.resolve(m.data)
+      }
+      break
+
+    /* Ignore other init messages (API, AUTH, TEMPLATE, CONTENT, etc.) */
+  }
+}
+
+function mark(k) {
+  ST.got.add(k)
+  if (!booted && REQUIRED.every(function(r){ return ST.got.has(r) })) {
+    booted = true
+    boot()
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME — primary colour only
+   Per theme.md:
+     1. restRequest('get', 'App', ACTIVITY_RESPONSE.app)  → App.theme.colors.primary
+     2. restRequest('list', 'Settings', {})               → Settings.theme.colors.primary (fallback)
+     3. Merge: App takes precedence
+     4. Apply via setAccent()
+
+   This runs as a non-blocking side effect of boot.
+   It is also triggered when ACTIVITY_RESPONSE arrives (if boot ran first).
+   A guard prevents double-execution.
+══════════════════════════════════════════════════════════ */
+var _themeDone = false
+
+async function fetchAndApplyTheme() {
+  if (_themeDone) return
+  if (!ST.ACTIVITY_RESPONSE || !ST.ACTIVITY_RESPONSE.app) return
+  _themeDone = true  /* set before await to block concurrent calls */
+
+  try {
+    var appId = ST.ACTIVITY_RESPONSE.app
+    var res = await Promise.allSettled([
+      restRequest('get',  'App',      appId),
+      restRequest('list', 'Settings', {})
+    ])
+
+    /* App theme — takes precedence */
+    var appColors = {}
+    if (res[0].status === 'fulfilled' && res[0].value && res[0].value.theme && res[0].value.theme.colors) {
+      appColors = res[0].value.theme.colors
+    }
+
+    /* Settings theme — fallback */
+    var settColors = {}
+    if (res[1].status === 'fulfilled' && res[1].value && res[1].value.items && res[1].value.items[0] &&
+        res[1].value.items[0].theme && res[1].value.items[0].theme.colors) {
+      settColors = res[1].value.items[0].theme.colors
+    }
+
+    /* App overrides Settings at field level */
+    var primary = appColors.primary || settColors.primary || null
+    setAccent(primary)
+  } catch (_) {
+    _themeDone = false  /* allow retry */
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+var _tok = null
+var _org = null
+
+async function boot() {
+  /* Start theme in background — doesn't block showing the UI */
+  fetchAndApplyTheme()
+
+  _tok = ST.CONFIG.calendlyToken || ST.CONFIG.token || null
+  if (!_tok) {
+    fatal('No Calendly API token. Add "calendlyToken" to the activity Custom Config JSON.')
+    return
+  }
+
+  document.getElementById('ttl').textContent = ST.CONFIG.title    || 'Book an Appointment'
+  document.getElementById('sub').textContent = ST.CONFIG.subtitle || 'Select a time that works for you'
+
+  try {
+    var me = await cFetch('/users/me')
+    _org = me.resource.current_organization
+    scr('scr-main')
+    loadTypes()
+  } catch (e) {
+    fatal('Could not connect to Calendly. Check your API token. (' + e.message + ')')
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   CALENDLY API
+══════════════════════════════════════════════════════════ */
+var CAPI = 'https://api.calendly.com'
+
+async function cFetch(path, opts) {
+  if (!path || path[0] !== '/' || /[\r\n]/.test(path)) throw new Error('Bad path')
+  var res = await fetch(CAPI + path, Object.assign({}, opts || {}, {
+    headers: Object.assign(
+      { 'Authorization': 'Bearer ' + _tok, 'Content-Type': 'application/json' },
+      (opts && opts.headers) || {}
+    )
+  }))
+  if (!res.ok) {
+    var e = await res.json().catch(function(){ return {} })
+    throw new Error(e.message || 'HTTP ' + res.status)
+  }
+  return res.json()
+}
+
+/* ══════════════════════════════════════════════════════════
+   EVENT TYPES
+══════════════════════════════════════════════════════════ */
+async function loadTypes() {
+  var el = document.getElementById('ev-list')
+  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>'
+  try {
+    var d = await cFetch('/event_types?organization=' + encodeURIComponent(_org) + '&active=true')
+    var types = d.collection || []
+    if (!types.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-ico">&#128219;</div><p>No active event types found.</p></div>'
+      return
+    }
+    el.innerHTML = types.map(function(et, i) {
+      var col  = validColor(et.color) || 'var(--accent)'
+      var json = esc(JSON.stringify(et))
+      var desc = et.description_plain
+        ? ' &middot; ' + esc(et.description_plain.slice(0, 55)) + (et.description_plain.length > 55 ? '&hellip;' : '')
+        : ''
+      return '<div class="ev-row" style="animation-delay:' + (i * .05) + 's"'
+           + ' onclick="openWidget(this.dataset.d)" data-d="' + json + '">'
+           + '<div class="ev-dot" style="background:' + col + '"></div>'
+           + '<div class="ev-info">'
+           + '<div class="ev-name">' + esc(et.name) + '</div>'
+           + '<div class="ev-meta">' + esc(String(et.duration)) + ' min' + desc + '</div>'
+           + '</div>'
+           + '<div class="ev-chev">&#x203A;</div>'
+           + '</div>'
+    }).join('')
+  } catch (e) {
+    el.innerHTML = '<div class="err-box">&#9888; ' + esc(e.message) + '</div>'
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   WIDGET
+   We render Calendly as a raw <iframe> pointing directly at
+   the scheduling URL with prefill params in the query string.
+   This works on both mobile WebView and web iframe without
+   the Calendly JS widget script, which detects mobile
+   user-agents and redirects to the external browser.
+
+   Prefill: name, email passed as URL query params.
+   Booking detection: Calendly posts 'calendly.event_scheduled'
+   via postMessage when the booking completes — we listen for
+   this on window/document as before.
+══════════════════════════════════════════════════════════ */
+var _selEv = null
+
+function openWidget(json) {
+  try { _selEv = JSON.parse(json) } catch (_) { return }
+  if (!_selEv || typeof _selEv !== 'object') return
+
+  view('widget')
+
+  var iframe  = document.getElementById('cal-iframe')
+  var overlay = document.getElementById('w-overlay')
+
+  // Reset state
+  overlay.classList.remove('gone')
+  iframe.style.opacity = '0'
+  iframe.src = 'about:blank'
+
+  // Build Calendly scheduling URL with prefill as query params
+  var base = _selEv.scheduling_url
+  var params = new URLSearchParams()
+  if (ST.USER.displayName || ST.USER.username) {
+    params.set('name', ST.USER.displayName || ST.USER.username)
+  }
+  if (ST.USER.email) {
+    params.set('email', ST.USER.email)
+  }
+  // embed=1 keeps Calendly in embed mode, hide_event_type_details=1 keeps it clean
+  params.set('embed_type',   'Inline')
+  params.set('hide_gdpr_banner', '1')
+
+  var sep = base.indexOf('?') >= 0 ? '&' : '?'
+  var url = base + sep + params.toString()
+
+  // Show iframe once it loads
+  iframe.onload = function() {
+    if (iframe.src === 'about:blank') return
+    overlay.classList.add('gone')
+    iframe.style.opacity = '1'
+  }
+
+  // Small delay to let the overlay render before loading the iframe
+  setTimeout(function() { iframe.src = url }, 80)
+}
+
+function onCalendlyMsg(d) {
+  /* Calendly posts these events from inside the iframe via postMessage */
+  if (d.event === 'calendly.profile_page_viewed' ||
+      d.event === 'calendly.event_type_viewed'   ||
+      d.event === 'calendly.date_and_time_selected') {
+    document.getElementById('w-overlay').classList.add('gone')
+    document.getElementById('cal-iframe').style.opacity = '1'
+  }
+  if (d.event === 'calendly.event_scheduled') onBooked(d.payload)
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOKING — save then show confirmation
+══════════════════════════════════════════════════════════ */
+var _booking   = null
+var _bookingLk = false  /* lock against double-fire */
+
+async function onBooked(payload) {
+  if (_bookingLk) return
+  _bookingLk = true
+
+  _booking = {
+    eventTypeName: (_selEv && _selEv.name)     || 'Appointment',
+    duration:      (_selEv && _selEv.duration) || null,
+    eventUri:      payload && payload.event   && payload.event.uri   || null,
+    inviteeUri:    payload && payload.invitee && payload.invitee.uri || null,
+    inviteeName:   ST.USER.displayName || '',
+    inviteeEmail:  ST.USER.email       || '',
+    bookedAt:      new Date().toISOString()
+  }
+
+  view('confirmed')
+  renderConf(_booking)
+
+  /* Save to ActivityResponse bookmark (no QUIT needed — user can still tap Done) */
+  if (ST.ACTIVITY_RESPONSE && ST.ACTIVITY_RESPONSE.id) {
+    try {
+      var prev = []
+      try { prev = JSON.parse(ST.ACTIVITY_RESPONSE.bookmark) || [] } catch (_) {}
+      if (!Array.isArray(prev)) prev = []
+      prev.unshift(_booking)
+      await restRequest('put', 'ActivityResponse', {
+        id: ST.ACTIVITY_RESPONSE.id, bookmark: JSON.stringify(prev)
+      })
+    } catch (_) {}
+  }
+}
+
+function renderConf(b) {
+  var dt  = new Date(b.bookedAt)
+  var ds  = dt.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+  var ts  = dt.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' })
+  document.getElementById('conf-rows').innerHTML =
+    drow('&#128203;', 'Appointment', esc(b.eventTypeName) + (b.duration ? ' &middot; ' + esc(String(b.duration)) + ' min' : '')) +
+    drow('&#128197;', 'Booked on',   esc(ds) + ' at ' + esc(ts)) +
+    drow('&#128100;', 'Name',        esc(b.inviteeName)  || '&mdash;') +
+    drow('&#9993;',   'Email',       esc(b.inviteeEmail) || '&mdash;') +
+    drow('&#9989;',   'Status',      '<span style="color:var(--success)">Confirmed</span>')
+}
+
+function drow(icon, lbl, val) {
+  return '<div class="d-row">'
+       + '<div class="d-icon">' + icon + '</div>'
+       + '<div><div class="d-lbl">' + lbl + '</div><div class="d-val">' + val + '</div></div>'
+       + '</div>'
+}
+
+/* ══════════════════════════════════════════════════════════
+   CLOSE / DONE
+══════════════════════════════════════════════════════════ */
+async function done() {
+  /* Send QUESTION_RESPONSE before QUIT so the booking is persisted in QR */
+  if (_booking && ST.QUESTIONS.length > 0) {
+    var q = ST.QUESTIONS[0]
+    postToApp('QUESTION_RESPONSE', {
+      index: 0, question: q._id, options: [],
+      text: JSON.stringify(_booking), duration: 0
+    })
+    await new Promise(function(r){ setTimeout(r, 500) })
+  }
+  postToApp('QUIT', { completeState: 'COMPLETE' })
+}
+
+/* ══════════════════════════════════════════════════════════
+   MY APPOINTMENTS — diary pattern (gameplay-and-economy.md)
+══════════════════════════════════════════════════════════ */
+async function loadAppts() {
+  document.getElementById('al-loading').style.display = 'block'
+  document.getElementById('al-content').style.display = 'none'
+  document.getElementById('c-up').style.display   = 'none'
+  document.getElementById('c-past').style.display = 'none'
+  document.getElementById('a-empty').style.display = 'none'
+
+  var bookings = []
+
+  try {
+    /* 1. All COMPLETE past attempts, excluding the current open one */
+    var curId = ST.ACTIVITY_RESPONSE && ST.ACTIVITY_RESPONSE.id
+    var ar = await restRequest('list', 'ActivityResponse', {
+      activity: ST.ACTIVITY.id, user: ST.USER.id,
+      complete: true, sort: '-date', limit: 50
+    })
+    var attempts = (ar.items || []).filter(function(a){ return a.id !== curId })
+
+    /* 2. QuestionResponses for each attempt in parallel */
+    var qrs = await Promise.all(attempts.map(function(a) {
+      return restRequest('list', 'QuestionResponse', {
+        parentActivityResponse: a.id, user: ST.USER.id,
+        sort: 'date', limit: 10
+      }).catch(function(){ return { items: [] } })
+    }))
+
+    attempts.forEach(function(a, i) {
+      var items = (qrs[i] && qrs[i].items) || []
+      var fromQr = false
+      /* Primary: booking JSON in QR.text */
+      items.forEach(function(q) {
+        if (!q.text) return
+        try { var b = JSON.parse(q.text); if (b && b.bookedAt) { bookings.push(b); fromQr = true } } catch (_) {}
+      })
+      /* Fallback: ActivityResponse bookmark */
+      if (!fromQr && a.bookmark) {
+        try {
+          var bm = JSON.parse(a.bookmark)
+          ;(Array.isArray(bm) ? bm : [bm]).forEach(function(b){ if (b && b.bookedAt) bookings.push(b) })
+        } catch (_) {}
+      }
+    })
+
+    /* Also include current-session bookmark (booking just made, QUIT not yet sent) */
+    var curBm = ST.ACTIVITY_RESPONSE && ST.ACTIVITY_RESPONSE.bookmark
+    if (curBm) {
+      try {
+        var bm2 = JSON.parse(curBm)
+        ;(Array.isArray(bm2) ? bm2 : [bm2]).forEach(function(b){ if (b && b.bookedAt) bookings.push(b) })
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.error('[appts]', e.message)
+  }
+
+  /* Deduplicate */
+  var seen = new Set()
+  var uniq = bookings.filter(function(b){
+    var k = b.inviteeUri || b.bookedAt
+    if (seen.has(k)) return false; seen.add(k); return true
+  })
+
+  if (!uniq.length) { apptEmpty(); return }
+
+  /* Enrich with live Calendly data */
+  var live = []
+  try {
+    var em = ST.USER.email
+    if (em && _org) {
+      var r = await Promise.allSettled([
+        cFetch('/scheduled_events?organization='+encodeURIComponent(_org)+'&invitee_email='+encodeURIComponent(em)+'&status=active&count=100'),
+        cFetch('/scheduled_events?organization='+encodeURIComponent(_org)+'&invitee_email='+encodeURIComponent(em)+'&status=canceled&count=100')
+      ])
+      var ac = r[0].status==='fulfilled' ? (r[0].value.collection||[]) : []
+      var ca = r[1].status==='fulfilled' ? (r[1].value.collection||[]) : []
+      live = ac.concat(ca)
+    }
+  } catch (_) {}
+
+  var byUri  = {}
+  var byName = {}
+  live.forEach(function(ev){
+    byUri[ev.uri] = ev
+    var k = (ev.name||'').toLowerCase().trim()
+    if (!byName[k]) byName[k] = []
+    byName[k].push(ev)
+  })
+
+  var now = new Date(), up = [], past = [], used = new Set()
+
+  for (var i=0; i<uniq.length; i++) {
+    var b = uniq[i], ev = null, mt = 'none'
+
+    if (b.eventUri && byUri[b.eventUri]) { ev = byUri[b.eventUri]; mt = 'direct' }
+
+    if (!ev) {
+      var k2 = (b.eventTypeName||'').toLowerCase().trim()
+      var pool = (byName[k2]||[]).filter(function(e){ return !used.has(e.uri) })
+      if (pool.length) {
+        var actP = pool.filter(function(e){ return e.status==='active' })
+        var cand = actP.length ? actP : pool
+        cand.sort(function(a,c){ return new Date(a.start_time)-new Date(c.start_time) })
+        var futP = cand.filter(function(e){ return new Date(e.start_time)>=now })
+        ev = futP.length ? futP[0] : cand[cand.length-1]
+        mt = 'name'
+      }
+    }
+    if (ev) used.add(ev.uri)
+
+    var inv = null
+    if (b.inviteeUri && mt==='direct') {
+      try {
+        var ip = String(b.inviteeUri).replace(CAPI,'')
+        if (ip.indexOf('/scheduled_events/')===0 && !/[\r\n<>]/.test(ip)) {
+          var ir = await cFetch(ip); inv = ir.resource||null
+        }
+      } catch (_) {}
+    }
+
+    var isCan = (ev&&ev.status==='canceled') || (inv&&inv.canceled)
+    var isRe  = mt==='name' && ev && !isCan && !!b.inviteeUri
+    var canR  = (ev&&ev.cancellation&&ev.cancellation.reason) || (inv&&inv.cancellation&&inv.cancellation.reason) || null
+    var stT   = ev&&ev.start_time ? new Date(ev.start_time) : null
+    var enT   = ev&&ev.end_time   ? new Date(ev.end_time)   : null
+    var dur   = (stT&&enT) ? Math.round((enT-stT)/60000)+' min' : (b.duration ? b.duration+' min' : '')
+
+    var card = {
+      name: (ev&&ev.name)||b.eventTypeName||'Appointment',
+      status: isCan?'canceled':'active',
+      rescheduled: isRe, cancelReason: canR,
+      startTime: stT, duration: dur,
+      bookedAt:  new Date(b.bookedAt),
+      email:     (inv&&inv.email)||b.inviteeEmail||ST.USER.email||'',
+      userName:  (inv&&inv.name) ||b.inviteeName ||ST.USER.displayName||'',
+      hasLive:   !!ev
+    }
+
+    var ref = stT||card.bookedAt
+    if (!isCan && ref>=now) up.push(card); else past.push(card)
+  }
+
+  document.getElementById('al-loading').style.display = 'none'
+  document.getElementById('al-content').style.display = 'block'
+
+  if (up.length) {
+    document.getElementById('c-up').style.display = 'block'
+    document.getElementById('a-up').innerHTML = up.map(apptCard).join('')
+  }
+  if (past.length) {
+    document.getElementById('c-past').style.display = 'block'
+    document.getElementById('a-past').innerHTML = past.map(apptCard).join('')
+  }
+  if (!up.length && !past.length) apptEmpty()
+}
+
+function apptCard(b) {
+  var now = new Date(), isCan = b.status==='canceled'
+  var cls = isCan?'cancelled':(b.startTime&&b.startTime>=now?'upcoming':'past')
+  var lbl = isCan?'Cancelled':(cls==='upcoming'?'Upcoming':'Past')
+
+  var ltag = b.rescheduled
+    ? '<span class="ltag lt-re">&#8635; Rescheduled</span>'
+    : b.hasLive
+      ? '<span class="ltag lt-live">&#9679; Live</span>'
+      : '<span class="ltag lt-saved">&#9679; Saved</span>'
+
+  var ts = b.startTime
+    ? b.startTime.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})+' at '+b.startTime.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})
+    : 'Booked '+b.bookedAt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})
+
+  var canH = isCan
+    ? '<div class="can-block"><strong>This appointment was cancelled.</strong>'
+      +(b.cancelReason?'<div class="can-reason">'+esc(b.cancelReason)+'</div>':'')
+      +'<div class="can-note">Check your email or contact the business to rebook.</div></div>'
+    : ''
+
+  var dur = b.duration
+    ? ' <span style="font-weight:400;font-size:11px;color:var(--ink-2)">&middot; '+esc(String(b.duration))+'</span>'
+    : ''
+
+  return '<div class="appt-card '+cls+'">'
+    +'<div class="appt-head"><span class="badge b-'+cls+'">'+esc(lbl)+'</span>'+ltag+'</div>'
+    +'<div class="appt-name">'+esc(b.name)+dur+'</div>'
+    +(b.userName?'<div class="appt-meta">&#128100; '+esc(b.userName)+'</div>':'')
+    +(b.email   ?'<div class="appt-meta">&#9993; '  +esc(b.email)   +'</div>':'')
+    +'<div class="appt-meta">&#128197; '+esc(ts)+'</div>'
+    +canH+'</div>'
+}
+
+function apptEmpty() {
+  document.getElementById('al-loading').style.display = 'none'
+  document.getElementById('al-content').style.display = 'block'
+  document.getElementById('a-empty').style.display    = 'block'
+}
+
+/* ══════════════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════════════ */
+function view(v) {
+  ['events','widget','confirmed'].forEach(function(n){
+    document.getElementById('v-'+n).style.display = n===v?'block':'none'
+  })
+}
+
+function tab(t) {
+  document.getElementById('tab-book').style.display  = t==='book' ?'block':'none'
+  document.getElementById('tab-appts').style.display = t==='appts'?'block':'none'
+  document.getElementById('t-book').classList.toggle('on',  t==='book')
+  document.getElementById('t-appts').classList.toggle('on', t==='appts')
+  if (t==='appts') loadAppts()
+}
+
+function resetBook() {
+  _selEv = null; _bookingLk = false
+  var iframe = document.getElementById('cal-iframe')
+  if (iframe) { iframe.src = 'about:blank'; iframe.style.opacity = '0' }
+  view('events'); loadTypes()
+}
+
+function scr(id) {
+  document.querySelectorAll('.scr').forEach(function(s){ s.classList.remove('on'); s.style.display='none' })
+  var el = document.getElementById(id)
+  el.classList.add('on')
+  el.style.display = id==='scr-loading'?'flex':'block'
+}
+
+function fatal(msg) {
+  document.getElementById('err-msg').textContent = msg; scr('scr-error')
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEV FALLBACK — ?token=... for testing outside Cogniss
+══════════════════════════════════════════════════════════ */
+
+setTimeout(function() {
+  if (booted) return
+  var t = new URLSearchParams(location.search).get('token')
+  if (t) {
+    ST.CONFIG            = { calendlyToken: t }
+    ST.USER              = { id:'dev', displayName:'Test User', email:'test@example.com' }
+    ST.ACTIVITY          = { id:'dev-act' }
+    ST.ACTIVITY_RESPONSE = { id:'dev-ar',  app:'dev-app', bookmark: null }
+    ST.QUESTIONS         = []
+    ;['CONFIG','USER','ACTIVITY','QUESTIONS','ACTIVITY_RESPONSE'].forEach(function(k){ ST.got.add(k) })
+    booted = true; boot()
+  } else {
+    fatal('No config received. Add ?token=YOUR_CALENDLY_TOKEN to the URL for testing.')
+  }
+}, 3000)
+</script>
+</body>
+</html>
